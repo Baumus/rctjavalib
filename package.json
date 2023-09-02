@@ -1,0 +1,18 @@
+{
+  "name": "rctjavalib",
+  "version": "1.0.0",
+  "description": "A library for communication with solar power inverters of the RCT power brand, not endorsed by or affiliated with the eponymous company.",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "jest": {
+    "testEnvironment": "node"
+  },
+  "keywords": ["rct-power","javascript","battery","solar","pv"],
+  "author": "",
+  "license": "LGPL-2.1",
+  "devDependencies": {
+    "jest": "^29.6.4"
+  }
+}
