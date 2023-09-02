@@ -40,11 +40,27 @@ class DatagramParser {
         let state = ParserState.AwaitingStart;
         let dg = {};
 
+        //debug purposes
+        if (this.buffer[0] !== 0x2B) {
+            throw new RecoverableError('Missing start byte');
+        }
+    
         console.log("Parser ");
         
         for (let i = this.pos; i < this.length; i++) {
             const b = this.buffer[i];
 
+            if (escaped) {
+                escaped = false;
+            } else if (b === 0x2d) {
+                escaped = true;
+                continue;
+            }
+            if (b === 0x2b && state !== ParserState.AwaitingStart) {
+                this.reset();
+                continue;
+            }
+            
             console.log(`(${state})-${b.toString(16).padStart(2, '0')}->`);
 
             if (!escaped) {
@@ -59,6 +75,11 @@ class DatagramParser {
                 escaped = false;
             }
 
+            console.log("Parsing error detected.");
+            console.log(`Current state: ${state}`);
+            console.log(`Current byte: ${b.toString(16).padStart(2, '0')}`);
+            console.log(`Buffer position: ${i}`);
+            
             switch (state) {
                 case ParserState.AwaitingStart:
                     if (b === 0x2B) {
@@ -71,13 +92,12 @@ class DatagramParser {
                     crc.update(b);
                     dg.cmd = b;
                 
-                    // Zugriff auf die Konstanten innerhalb der Command-Klasse
                     if (dg.cmd <= Command.READ_PERIODICALLY || dg.cmd === Command.EXTENSION) {
                         state = ParserState.AwaitingLen;
                     } else {
                         state = ParserState.AwaitingStart;
                     }
-                    break;
+                    break;                  
                     
                 case ParserState.AwaitingLen:
                     crc.update(b);
