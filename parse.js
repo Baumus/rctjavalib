@@ -1,6 +1,6 @@
 const { RecoverableError, isRecoverableError } = require('./recoverable.js');
 const CRC = require('./crc.js');
-const Command = require('./datagram.js');
+const { Command } = require('./datagram.js');
 
 
 const ParserState = {
@@ -79,6 +79,7 @@ class DatagramParser {
             console.log(`Current state: ${state}`);
             console.log(`Current byte: ${b.toString(16).padStart(2, '0')}`);
             console.log(`Buffer position: ${i}`);
+            console.log(`End of loop iteration. Current state: ${state}`);
             
             switch (state) {
                 case ParserState.AwaitingStart:
@@ -92,13 +93,15 @@ class DatagramParser {
                     crc.update(b);
                     dg.cmd = b;
                 
+                    console.log(`Command value: ${dg.cmd}, READ_PERIODICALLY value: ${Command.READ_PERIODICALLY}, EXTENSION value: ${Command.EXTENSION}`);
+
                     if (dg.cmd <= Command.READ_PERIODICALLY || dg.cmd === Command.EXTENSION) {
                         state = ParserState.AwaitingLen;
                     } else {
                         state = ParserState.AwaitingStart;
                     }
-                    break;                  
-                    
+                    break;
+                                    
                 case ParserState.AwaitingLen:
                     crc.update(b);
                     length = b;
@@ -127,11 +130,10 @@ class DatagramParser {
                 case ParserState.AwaitingId3:
                     crc.update(b);
                     dg.id |= b;
+                    dg.data = [];  // Das entspricht make([]byte, 0, dataLength) in Go
                     if (dataLength > 0) {
-                        dg.data = [];  // Das entspricht make([]byte, 0, dataLength) in Go
                         state = ParserState.AwaitingData;
                     } else {
-                        dg.data = null;
                         state = ParserState.AwaitingCrc0;
                     }
                     break;
@@ -167,8 +169,9 @@ class DatagramParser {
         }
 
         if (state !== ParserState.Done) {
+            console.error("Failed to parse data:", this.buffer.toString());
             throw new RecoverableError(`Parsing failed in state ${state}`);
-        }
+        }        
         return dg;
     }
 }
