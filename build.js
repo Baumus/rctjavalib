@@ -30,6 +30,14 @@ class DatagramBuilder {
     }
 
     build(dg) {
+        //debug
+        if (typeof dg.id !== 'number' || dg.id < 0 || dg.id > 0xFFFFFFFF) {
+            throw new Error('Invalid id value');
+        }
+        if (dg.data && !Array.isArray(dg.data)) {
+            throw new Error('Data should be an array of bytes');
+        }
+
         this.reset();
         this.writeByteUnescapedNoCRC(0x2b); // Start byte
         this.writeByte(dg.cmd);
@@ -56,8 +64,9 @@ class DatagramBuilder {
     }
 
     toString() {
-        return '[' + this.buffer.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ') + ']';
+        return '[' + this.buffer.map(b => (b & 0xFF).toString(16).toUpperCase().padStart(2, '0')).join(' ') + ']';
     }
+    
 }
 
 module.exports = DatagramBuilder;

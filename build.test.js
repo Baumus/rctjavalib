@@ -1,15 +1,18 @@
 const DatagramBuilder = require('./build.js');
 const DatagramParser = require('./parse.js');
+const { Command, Identifier } = require('./datagram.js');
+
 
 const builderTestCases = [
-    { dg: { cmd: 'Read', id: 'BatteryPowerW', data: null }, expect: "[2B 01 04 40 0F 01 5B 58 B4]" },
-    { dg: { cmd: 'Read', id: 'InverterACPowerW', data: null }, expect: "[2B 01 04 DB 2D 2D 69 AE 55 AB]" }
+    { dg: { cmd: Command.READ, id: Identifier.BATTERY_POWER_W, data: null }, expect: "[2B 01 04 40 0F 01 5B 58 B4]" },
+    { dg: { cmd: Command.READ, id: Identifier.INVERTER_AC_POWER_W, data: null }, expect: "[2B 01 04 DB 2D 2D 69 AE 55 AB]" }
 ];
 
 describe('DatagramBuilder and DatagramParser Tests', () => {
 
     test('Builder returns expected byte representation', () => {
         const builder = new DatagramBuilder();
+       
         for (const tc of builderTestCases) {
             builder.build(tc.dg);
             const res = builder.toString();

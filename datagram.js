@@ -182,4 +182,4 @@ class Datagram {
     }
 }
 
-module.exports = Datagram;
+module.exports = { Datagram, Command, Identifier };
