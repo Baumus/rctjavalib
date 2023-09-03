@@ -42,7 +42,7 @@ class DatagramParser {
         let dg = {};
 
         //debug purposes
-        console.log("Received data:", this.buffer);
+        console.log("Buffer content:", this.buffer);
         let startIndex = this.buffer.indexOf(0x2B);
         if (startIndex === -1) {
             throw new RecoverableError('Missing start byte');
@@ -50,6 +50,18 @@ class DatagramParser {
         state = ParserState.AwaitingCmd;
     
         console.log("Parser ");
+
+        // Before starting the parsing loop
+        for (let i = 0; i < this.buffer.length; i++) {
+            if (this.buffer[i] < -128 || this.buffer[i] > 127) {
+                const intValue = this.buffer[i];
+                this.buffer[i] = (intValue >> 24) & 0xFF;
+                this.buffer.splice(i+1, 0, (intValue >> 16) & 0xFF, (intValue >> 8) & 0xFF, intValue & 0xFF);
+                i += 3;  // Skip the next 3 bytes that were just added
+            }
+        }
+
+
         
         for (let i = startIndex; i < this.length; i++) {
             const b = this.buffer[i];
@@ -91,7 +103,8 @@ class DatagramParser {
                         state = ParserState.AwaitingLen;
                     } else {
                         state = ParserState.AwaitingStart;
-                    }                    
+                    }     
+                    break;               
                                     
                 case ParserState.AwaitingLen:
                     crc.update(b);
@@ -129,21 +142,29 @@ class DatagramParser {
                     }
                     break;
             
-                case ParserState.AwaitingData:
-                    crc.update(b);
-                    if (escaped) {
-                        // Handle the escaped byte
-                        dg.data.push(b ^ 0x20);
-                        escaped = false;
-                    } else if (b === 0x2d) {
-                        escaped = true;
-                    } else {
-                        dg.data.push(b);
-                    }
-                    if (dg.data.length === dataLength) {
-                        state = ParserState.AwaitingCrc0;
-                    }
-                    break;
+                    case ParserState.AwaitingData:
+                        crc.update(b);
+                        if (escaped) {
+                            // Handle the escaped byte
+                            dg.data.push(b ^ 0x20);
+                            escaped = false;
+                        } else if (b === 0x2d) {
+                            escaped = true;
+                        } else {
+                            // If the data length indicates a 32-bit integer, push 4 bytes
+                            if (dataLength === 4) {
+                                const intValue = (this.buffer[i] << 24) | (this.buffer[i+1] << 16) | (this.buffer[i+2] << 8) | this.buffer[i+3];
+                                dg.data.push(intValue);
+                                i += 3;  // Skip the next 3 bytes
+                            } else {
+                                dg.data.push(b);
+                            }
+                        }
+                        if (dg.data.length === dataLength) {
+                            state = ParserState.AwaitingCrc0;
+                        }
+                        break;
+                    
             
                 case ParserState.AwaitingCrc0:
                     crcReceived = b << 8;
@@ -171,7 +192,7 @@ class DatagramParser {
                 console.log(`Current state: ${state}`);
                 console.log(`Current byte: ${b.toString(16).padStart(2, '0')}`);
                 console.log(`Buffer position: ${i}`);
-            }            
+            }  
 
         }
 
