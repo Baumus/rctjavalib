@@ -108,7 +108,7 @@ class DatagramParser {
                     dg.cmd = b;
                     console.log("Parsed command value:", dg.cmd);
 
-                    if (Object.values(Command).filter(val => typeof val === 'number').includes(dg.cmd)) {
+                    if (Object.values(Command).includes(dg.cmd)) { 
                         state = ParserState.AwaitingLen;
                     } else {
                         console.log("Unrecognized command byte:", dg.cmd);
