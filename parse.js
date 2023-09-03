@@ -47,7 +47,7 @@ class DatagramParser {
         if (startIndex === -1) {
             throw new RecoverableError('Missing start byte');
         }
-
+        state = ParserState.AwaitingCmd;
     
         console.log("Parser ");
         
@@ -63,25 +63,19 @@ class DatagramParser {
                 } else if (b === 0x2b && state !== ParserState.AwaitingStart) {
                     this.reset();
                     continue;
-                } else if (b === 0x2b) {
-                    state = ParserState.AwaitingCmd;
-                    continue;
                 }
             }
         
             console.log(`(${state})-${b.toString(16).padStart(2, '0')}->`);
              
             switch (state) {
-                case ParserState.AwaitingStart:
-                    if (b === 0x2B) {
-                        state = ParserState.AwaitingCmd;
-                    }
-                    break;
             
                 case ParserState.AwaitingCmd:
                     crc.reset();
                     crc.update(b);
                     dg.cmd = b;
+                    console.log("Received command byte:", dg.cmd);
+
                 
                     console.log(`Command value: ${dg.cmd}, READ_PERIODICALLY value: ${Command.READ_PERIODICALLY}, EXTENSION value: ${Command.EXTENSION}`);
 
