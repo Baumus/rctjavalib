@@ -63,13 +63,21 @@ class DatagramParser {
                 } else if (b === 0x2b && state !== ParserState.AwaitingStart) {
                     this.reset();
                     continue;
+                } else if (b === 0x2b) {
+                    state = ParserState.AwaitingCmd;
+                    continue;
                 }
             }
         
             console.log(`(${state})-${b.toString(16).padStart(2, '0')}->`);
-             
+         
             switch (state) {
-            
+                case ParserState.AwaitingStart:
+                    if (b === 0x2B) {
+                        state = ParserState.AwaitingCmd;
+                    }
+                    break;
+
                 case ParserState.AwaitingCmd:
                     crc.reset();
                     crc.update(b);
