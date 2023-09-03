@@ -43,3 +43,49 @@ describe('DatagramBuilder and DatagramParser Tests', () => {
     });
 
 });
+
+describe('DatagramBuilder Validations', () => {
+
+    let builder;
+
+    beforeEach(() => {
+        builder = new DatagramBuilder();
+    });
+
+    test('should throw error for dg.id value of -1', () => {
+        expect(() => {
+            builder.build({ id: -1, cmd: 1, data: [1, 2, 3] });
+        }).toThrow('Invalid id value');
+    });
+
+    test('should throw error for dg.id value of 0x100000000', () => {
+        expect(() => {
+            builder.build({ id: 0x100000000, cmd: 1, data: [1, 2, 3] });
+        }).toThrow('Invalid id value');
+    });
+
+    test('should throw error for dg.data value containing -1', () => {
+        expect(() => {
+            builder.build({ id: 1, cmd: 1, data: [-1, 2, 3] });
+        }).toThrow('Invalid byte value in data');
+    });
+
+    test('should throw error for dg.data value containing 256', () => {
+        expect(() => {
+            builder.build({ id: 1, cmd: 1, data: [256, 2, 3] });
+        }).toThrow('Invalid byte value in data');
+    });
+
+    test('should throw error for dg.cmd value of -1', () => {
+        expect(() => {
+            builder.build({ id: 1, cmd: -1, data: [1, 2, 3] });
+        }).toThrow('Invalid command value');
+    });
+
+    test('should throw error for dg.cmd value of 256', () => {
+        expect(() => {
+            builder.build({ id: 1, cmd: 256, data: [1, 2, 3] });
+        }).toThrow('Invalid command value');
+    });
+
+});

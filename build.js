@@ -40,6 +40,9 @@ class DatagramBuilder {
 
         this.reset();
         this.writeByteUnescapedNoCRC(0x2b); // Start byte
+        if (typeof dg.cmd !== 'number' || dg.cmd < 0 || dg.cmd > 255) {
+            throw new Error('Invalid command value');
+        }
         this.writeByte(dg.cmd);
         
         let dataLength = (dg.data !== null && dg.data !== undefined) ? dg.data.length : 0;
@@ -52,6 +55,9 @@ class DatagramBuilder {
 
         if (dg.data !== null && dg.data !== undefined) {
             for (const d of dg.data) {
+                if (d < 0 || d > 255) {
+                    throw new Error('Invalid byte value in data');
+                } 
                 this.writeByte(d);
             }
         }
