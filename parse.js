@@ -74,7 +74,7 @@ class DatagramParser {
                     crc.reset();
                     crc.update(b);
                     dg.cmd = b;
-                    console.log("Received command byte:", dg.cmd);
+                    console.log("Parsed command value:", dg.cmd);
 
                 
                     console.log(`Command value: ${dg.cmd}, READ_PERIODICALLY value: ${Command.READ_PERIODICALLY}, EXTENSION value: ${Command.EXTENSION}`);
