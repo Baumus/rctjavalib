@@ -103,7 +103,7 @@ class Identifier {
 
 class InverterStates {
     static STATE_STANDBY = 0;
-    static STATE_INITIALIZATION = 1;
+    static STATE_INITIALIZATION = 1;quit
     static STATE_STANDBY2 = 2;
     static STATE_EFFICIENCY = 3;
     static STATE_INSULATION_CHECK = 4;
