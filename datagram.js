@@ -21,7 +21,8 @@ class Command {
             "Response",
             "LongResponse",
             "Reserved2",
-            "ReadPeriodically"
+            "ReadPeriodically",
+            "Extension" 
         ];
         if (cmd <= this.READ_PERIODICALLY) {
             return commands[cmd];

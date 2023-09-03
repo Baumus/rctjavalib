@@ -79,12 +79,11 @@ class DatagramParser {
                 
                     console.log(`Command value: ${dg.cmd}, READ_PERIODICALLY value: ${Command.READ_PERIODICALLY}, EXTENSION value: ${Command.EXTENSION}`);
 
-                    if (dg.cmd <= Command.READ_PERIODICALLY || dg.cmd === Command.EXTENSION) {
+                    if (Command.toString(dg.cmd) !== "#INVALID") {
                         state = ParserState.AwaitingLen;
                     } else {
                         state = ParserState.AwaitingStart;
-                    }
-                    break;
+                    }                    
                                     
                 case ParserState.AwaitingLen:
                     crc.update(b);
