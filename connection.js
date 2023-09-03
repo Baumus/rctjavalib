@@ -1,7 +1,7 @@
 
 const net = require('net');
 const DatagramBuilder = require('./build.js');
-const DatagramParser = require('./parser.js');
+const DatagramParser = require('./parse.js');
 const Cache = require('./cache.js');
 const RecoverableError = require('./recoverable.js');
 
@@ -24,8 +24,10 @@ class Connection {
     }
 
     async connect() {
-        const address = `${this.host}:8899`; // default port for RCT
-        this.conn = net.createConnection(address);
+        this.conn = net.createConnection({ host: this.host, port: 8899 });
+        this.conn.on('error', (err) => {
+            console.error('Connection error:', err);
+        });        
         this.conn.setTimeout(DIAL_TIMEOUT);
         return new Promise((resolve, reject) => {
             this.conn.on('connect', resolve);
@@ -46,7 +48,7 @@ class Connection {
         }
 
         return new Promise((resolve, reject) => {
-            this.conn.write(rdb.bytes(), (err) => {
+            this.conn.write(Buffer.from(rdb.bytes()), (err) => {
                 if (err) {
                     this.close();
                     this.connect().then(() => {

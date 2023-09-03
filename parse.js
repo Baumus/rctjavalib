@@ -42,6 +42,7 @@ class DatagramParser {
         let dg = {};
 
         //debug purposes
+        console.log("Received data:", this.buffer);
         if (this.buffer[0] !== 0x2B) {
             throw new RecoverableError('Missing start byte');
         }
