@@ -45,9 +45,9 @@ class DatagramBuilder {
         let dataLength = (dg.data !== null && dg.data !== undefined) ? dg.data.length : 0;
         this.writeByte(dataLength + 4);
         
-        this.writeByte(dg.id >> 24);
-        this.writeByte((dg.id >> 16) & 0xff);
-        this.writeByte((dg.id >> 8) & 0xff);
+        this.writeByte(dg.id >>> 24);
+        this.writeByte((dg.id >>> 16) & 0xff);
+        this.writeByte((dg.id >>> 8) & 0xff);
         this.writeByte(dg.id & 0xff);
 
         if (dg.data !== null && dg.data !== undefined) {
