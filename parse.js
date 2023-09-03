@@ -19,6 +19,7 @@ const ParserState = {
 
 class DatagramParser {
     constructor() {
+        this.dg = { id: 0 };
         this.buffer = new Uint8Array(1024); // Standardpuffergröße
         this.length = 0;
         this.pos = 0;
@@ -101,13 +102,13 @@ class DatagramParser {
             
                 case ParserState.AwaitingId0:
                     crc.update(b);
-                    dg.id = b << 24;
+                    dg.id |= (b << 24) >>> 0;  // Ensure unsigned shift
                     state = ParserState.AwaitingId1;
                     break;
             
                 case ParserState.AwaitingId1:
                     crc.update(b);
-                    dg.id |= b << 16;
+                    dg.id |= (b << 16) >>> 0;  // Ensure unsigned shift
                     state = ParserState.AwaitingId2;
                     break;
             
@@ -162,8 +163,8 @@ class DatagramParser {
                 console.log(`Current state: ${state}`);
                 console.log(`Current byte: ${b.toString(16).padStart(2, '0')}`);
                 console.log(`Buffer position: ${i}`);
-            }
-            
+            }            
+
         }
 
         if (state !== ParserState.Done) {
