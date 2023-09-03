@@ -1,8 +1,14 @@
+/**
+ * DatagramParser: A class responsible for parsing datagrams based on a state machine approach.
+ * It handles unsigned 32-bit integers and provides detailed error messages for parsing failures.
+ */
 const { RecoverableError, isRecoverableError } = require('./recoverable.js');
 const CRC = require('./crc.js');
 const { Command } = require('./datagram.js');
 
-
+/**
+ * Enumeration of parser states representing different stages of the parsing process.
+ */
 const ParserState = {
     AwaitingStart: 0,
     AwaitingCmd: 1,
@@ -18,6 +24,10 @@ const ParserState = {
 };
 
 class DatagramParser {
+    /**
+     * Initializes a new instance of the DatagramParser.
+     * Sets up the initial state and buffer for parsing.
+     */
     constructor() {
         this.dg = { id: 0 };
         this.buffer = new Uint8Array(1024); // Standardpuffergröße
@@ -26,12 +36,22 @@ class DatagramParser {
         this.state = ParserState.AwaitingStart;
     }
 
+    /**
+     * Resets the parser to its initial state.
+     * Useful for starting a new parsing process or recovering from an error.
+     */
     reset() {
         this.length = 0;
         this.pos = 0;
         this.state = ParserState.AwaitingStart;
     }
 
+    /**
+     * Parses the buffer to extract a datagram.
+     * Uses a state machine approach to handle different parts of the datagram.
+     * @returns {Object} The parsed datagram.
+     * @throws {RecoverableError} If parsing fails at any stage.
+     */
     parse() {
         let length = 0;
         let dataLength = 0;
@@ -51,20 +71,12 @@ class DatagramParser {
     
         console.log("Parser ");
 
-        // Before starting the parsing loop
-        for (let i = 0; i < this.buffer.length; i++) {
-            if (this.buffer[i] < -128 || this.buffer[i] > 127) {
-                const intValue = this.buffer[i];
-                this.buffer[i] = (intValue >> 24) & 0xFF;
-                this.buffer.splice(i+1, 0, (intValue >> 16) & 0xFF, (intValue >> 8) & 0xFF, intValue & 0xFF);
-                i += 3;  // Skip the next 3 bytes that were just added
-            }
-        }
-
-
-        
+        this.length = this.buffer.length;
         for (let i = startIndex; i < this.length; i++) {
             const b = this.buffer[i];
+            if (b < 0) {
+                this.buffer[i] = b + 256;  // Convert to unsigned byte
+            }
 
             if (escaped) {
                 escaped = false;
@@ -96,15 +108,13 @@ class DatagramParser {
                     dg.cmd = b;
                     console.log("Parsed command value:", dg.cmd);
 
-                
-                    console.log(`Command value: ${dg.cmd}, READ_PERIODICALLY value: ${Command.READ_PERIODICALLY}, EXTENSION value: ${Command.EXTENSION}`);
-
-                    if (Command.toString(dg.cmd) !== "#INVALID") {
+                    if (Object.values(Command).filter(val => typeof val === 'number').includes(dg.cmd)) {
                         state = ParserState.AwaitingLen;
                     } else {
+                        console.log("Unrecognized command byte:", dg.cmd);
                         state = ParserState.AwaitingStart;
-                    }     
-                    break;               
+                    }
+                    break;              
                                     
                 case ParserState.AwaitingLen:
                     crc.update(b);
@@ -197,11 +207,14 @@ class DatagramParser {
         }
 
         if (state !== ParserState.Done) {
-            console.error("Failed to parse data:", this.buffer.toString());
-            throw new RecoverableError(`Parsing failed in state ${state}`);
-        }        
+            console.error("Failed to parse data at state:", state, "with buffer:", this.buffer.toString());
+            throw new RecoverableError(`Parsing failed in state ${state}. Buffer content: ${this.buffer.toString()}`);
+        }      
         return dg;
     }
 }
 
+/**
+ * Exports the DatagramParser class for use in other modules.
+ */
 module.exports = DatagramParser;
