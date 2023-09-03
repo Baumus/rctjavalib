@@ -114,8 +114,8 @@ class DatagramParser {
             
                 case ParserState.AwaitingId2:
                     crc.update(b);
-                    dg.id |= b << 8;
-                    state = ParserState.AwaitingId3;
+                    dg.id |= (b << 8) >>> 0;  // Ensure unsigned shift
+                    state = ParserState.AwaitingId3;  // Ensure transition to AwaitingId3
                     break;
             
                 case ParserState.AwaitingId3:
@@ -131,8 +131,16 @@ class DatagramParser {
             
                 case ParserState.AwaitingData:
                     crc.update(b);
-                    dg.data.push(b);  // Das entspricht append in Go
-                    if (dg.data.length >= dataLength) {
+                    if (escaped) {
+                        // Handle the escaped byte
+                        dg.data.push(b ^ 0x20);
+                        escaped = false;
+                    } else if (b === 0x2d) {
+                        escaped = true;
+                    } else {
+                        dg.data.push(b);
+                    }
+                    if (dg.data.length === dataLength) {
                         state = ParserState.AwaitingCrc0;
                     }
                     break;
