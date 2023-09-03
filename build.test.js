@@ -1,7 +1,7 @@
 const DatagramBuilder = require('./build.js');
 const DatagramParser = require('./parse.js');
 const { Command, Identifier } = require('./datagram.js');
-
+const { RecoverableError } = require('./recoverable.js');
 
 const builderTestCases = [
     { dg: { cmd: Command.READ, id: Identifier.BATTERY_POWER_W, data: null }, expect: "[2B 01 04 40 0F 01 5B 58 B4]" },

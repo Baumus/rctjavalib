@@ -163,7 +163,9 @@ class DatagramParser {
                         } else {
                             // If the data length indicates a 32-bit integer, push 4 bytes
                             if (dataLength === 4) {
+                                console.log("Bytes before combination:", this.buffer[i], this.buffer[i+1], this.buffer[i+2], this.buffer[i+3]);
                                 const intValue = ((this.buffer[i] & 0xFF) << 24) | ((this.buffer[i+1] & 0xFF) << 16) | ((this.buffer[i+2] & 0xFF) << 8) | (this.buffer[i+3] & 0xFF);
+                                console.log("Combined intValue:", intValue);
                                 dg.data.push(intValue);
                                 i += 3;  // Skip the next 3 bytes                            
                             } else {
