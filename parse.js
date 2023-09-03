@@ -43,13 +43,15 @@ class DatagramParser {
 
         //debug purposes
         console.log("Received data:", this.buffer);
-        if (this.buffer[0] !== 0x2B) {
+        let startIndex = this.buffer.indexOf(0x2B);
+        if (startIndex === -1) {
             throw new RecoverableError('Missing start byte');
         }
+
     
         console.log("Parser ");
         
-        for (let i = this.pos; i < this.length; i++) {
+        for (let i = startIndex; i < this.length; i++) {
             const b = this.buffer[i];
 
             if (escaped) {
@@ -65,10 +67,6 @@ class DatagramParser {
                     state = ParserState.AwaitingCmd;
                     continue;
                 }
-            }
-            
-            if (state === ParserState.AwaitingStart && b !== 0x2b) {
-                throw new RecoverableError('Expected start byte');
             }
         
             console.log(`(${state})-${b.toString(16).padStart(2, '0')}->`);
