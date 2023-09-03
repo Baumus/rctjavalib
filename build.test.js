@@ -89,3 +89,27 @@ describe('DatagramBuilder Validations', () => {
     });
 
 });
+
+describe('DatagramParser Validations', () => {
+    let parser;
+
+    beforeEach(() => {
+        parser = new DatagramParser();
+    });
+
+    test('should correctly parse valid buffer', () => {
+        const buffer = [0x2B, 0x01, 0x04, 0x40, 0x0F, 0x01, 0x5B, 0x58, 0xB4];
+        parser.buffer = new Uint8Array(buffer);
+        parser.length = buffer.length;
+        const dg = parser.parse();
+        expect(dg.cmd).toBe(0x01);
+        expect(dg.id).toBe(0x400F015B);
+    });
+
+    test('should throw error for invalid buffer', () => {
+        const buffer = [0x2B, 0x01, 0x04, 0x40, 0x0F, 0x01, 0x91, -2134184, 0x180];
+        parser.buffer = new Uint8Array(buffer);
+        parser.length = buffer.length;
+        expect(() => parser.parse()).toThrow(RecoverableError);
+    });
+});

@@ -163,9 +163,9 @@ class DatagramParser {
                         } else {
                             // If the data length indicates a 32-bit integer, push 4 bytes
                             if (dataLength === 4) {
-                                const intValue = (this.buffer[i] << 24) | (this.buffer[i+1] << 16) | (this.buffer[i+2] << 8) | this.buffer[i+3];
+                                const intValue = ((this.buffer[i] & 0xFF) << 24) | ((this.buffer[i+1] & 0xFF) << 16) | ((this.buffer[i+2] & 0xFF) << 8) | (this.buffer[i+3] & 0xFF);
                                 dg.data.push(intValue);
-                                i += 3;  // Skip the next 3 bytes
+                                i += 3;  // Skip the next 3 bytes                            
                             } else {
                                 dg.data.push(b);
                             }
