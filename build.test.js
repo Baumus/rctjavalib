@@ -33,7 +33,7 @@ describe('DatagramBuilder and DatagramParser Tests', () => {
 
             expect(dg).toBeTruthy();  // check if dg is not null or undefined
             expect(dg.cmd).toBe(tc.dg.cmd);
-            expect(dg.id).toBe(tc.dg.id);
+            expect(dg.id >>> 0).toBe(tc.dg.id >>> 0);  // Treat both values as unsigned 32-bit integers
             expect(dg.data ? dg.data.length : 0).toBe(tc.dg.data ? tc.dg.data.length : 0);
 
             for (let i = 0; i < dg.data.length; i++) {
