@@ -52,35 +52,25 @@ class DatagramParser {
 
             if (escaped) {
                 escaped = false;
-            } else if (b === 0x2d) {
-                escaped = true;
-                continue;
-            }
-            if (b === 0x2b && state !== ParserState.AwaitingStart) {
-                this.reset();
-                continue;
-            }
-            
-            console.log(`(${state})-${b.toString(16).padStart(2, '0')}->`);
-
-            if (!escaped) {
-                if (b === 0x2b) {
-                    state = ParserState.AwaitingCmd;
-                    continue;
-                } else if (b === 0x2d) {
+            } else {
+                if (b === 0x2d) {
                     escaped = true;
                     continue;
+                } else if (b === 0x2b && state !== ParserState.AwaitingStart) {
+                    this.reset();
+                    continue;
+                } else if (b === 0x2b) {
+                    state = ParserState.AwaitingCmd;
+                    continue;
                 }
-            } else {
-                escaped = false;
             }
-
-            console.log("Parsing error detected.");
-            console.log(`Current state: ${state}`);
-            console.log(`Current byte: ${b.toString(16).padStart(2, '0')}`);
-            console.log(`Buffer position: ${i}`);
-            console.log(`End of loop iteration. Current state: ${state}`);
             
+            if (state === ParserState.AwaitingStart && b !== 0x2b) {
+                throw new RecoverableError('Expected start byte');
+            }
+        
+            console.log(`(${state})-${b.toString(16).padStart(2, '0')}->`);
+             
             switch (state) {
                 case ParserState.AwaitingStart:
                     if (b === 0x2B) {
@@ -165,7 +155,15 @@ class DatagramParser {
                 case ParserState.Done:
                     // Ignoriere zusätzliche Bytes
                     break;
-            }            
+            }  
+            
+            if (!escaped && (b === 0x2b || b === 0x2d)) {
+                console.log("Parsing error detected.");
+                console.log(`Current state: ${state}`);
+                console.log(`Current byte: ${b.toString(16).padStart(2, '0')}`);
+                console.log(`Buffer position: ${i}`);
+            }
+            
         }
 
         if (state !== ParserState.Done) {
