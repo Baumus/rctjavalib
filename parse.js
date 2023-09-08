@@ -69,31 +69,19 @@ class DatagramParser {
         }
         state = ParserState.AwaitingCmd;
     
-        console.log("Parser ");
+        console.log("Parser start index:", startIndex);
+        console.log("Parser buffer length:", this.buffer.length);
+        console.log("Parser buffer state:", state);
 
         this.length = this.buffer.length;
-        for (let i = startIndex; i < this.length; i++) {
-            const b = this.buffer[i];
-            if (b < 0) {
-                this.buffer[i] = b + 256;  // Convert to unsigned byte
-            }
-
-            if (escaped) {
-                escaped = false;
-            } else {
-                if (b === 0x2d) {
-                    escaped = true;
-                    continue;
-                } else if (b === 0x2b && state !== ParserState.AwaitingStart) {
-                    this.reset();
-                    continue;
-                } else if (b === 0x2b) {
-                    state = ParserState.AwaitingCmd;
-                    continue;
-                }
-            }
+        let i = startIndex + 1; // Überspringen Sie das Startbyte und gehen Sie zum nächsten Byte über
+        while (i < this.length) {
+            const b = this.buffer[i] & 0xFF; // Ensure unsigned byte
+     
+            console.log("Parser buffer index:", i);
+            console.log("Parser buffer byte:", b);
         
-            console.log(`(${state})-${b.toString(16).padStart(2, '0')}->`);
+            console.log(`(state: ${state})-${b.toString(16).padStart(2, '0')}->`);
          
             switch (state) {
                 case ParserState.AwaitingStart:
@@ -160,14 +148,15 @@ class DatagramParser {
                             escaped = false;
                         } else if (b === 0x2d) {
                             escaped = true;
+                            continue;  // Skip the current iteration to handle the escaped byte in the next iteration
                         } else {
-                            // If the data length indicates a 32-bit integer, push 4 bytes
-                            if (dataLength === 4) {
+                            // 32-Bit-Integer-Handling überprüfen
+                            if (dataLength === 4 && i + 3 < this.length) {
                                 console.log("Bytes before combination:", this.buffer[i], this.buffer[i+1], this.buffer[i+2], this.buffer[i+3]);
                                 const intValue = ((this.buffer[i] & 0xFF) << 24) | ((this.buffer[i+1] & 0xFF) << 16) | ((this.buffer[i+2] & 0xFF) << 8) | (this.buffer[i+3] & 0xFF);
                                 console.log("Combined intValue:", intValue);
                                 dg.data.push(intValue);
-                                i += 3;  // Skip the next 3 bytes                            
+                                i += 3;  // Skip the next 3 bytes
                             } else {
                                 dg.data.push(b);
                             }
@@ -187,7 +176,7 @@ class DatagramParser {
                     crcReceived |= b;
                     const crcCalculated = crc.get();
                     if (crcCalculated !== crcReceived) {
-                        // Hier können Sie eine Fehlermeldung oder ein Logging hinzufügen, wenn Sie möchten
+                        //throw new RecoverableError(`CRC mismatch. Calculated: ${crcCalculated}, Received: ${crcReceived}`);
                         state = ParserState.AwaitingStart;
                     } else {
                         state = ParserState.Done;
@@ -205,7 +194,7 @@ class DatagramParser {
                 console.log(`Current byte: ${b.toString(16).padStart(2, '0')}`);
                 console.log(`Buffer position: ${i}`);
             }  
-
+        i++;
         }
 
         if (state !== ParserState.Done) {

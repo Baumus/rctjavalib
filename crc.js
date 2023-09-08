@@ -27,7 +27,7 @@ class CRC {
         if (this.isOdd) {
             this.update(0); // pad CRC stream (not byte stream) to even length
         }
-        return this.crc;
+        return this.crc & 0xFFFF;  // Ensure the result is a 16-bit unsigned value
     }
 }
 

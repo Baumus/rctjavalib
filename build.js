@@ -2,31 +2,50 @@ const CRC = require('./crc.js');
 
 class DatagramBuilder {
     constructor() {
-        this.buffer = [];
+        this.buffer = new Uint8Array(1024); // oder eine andere anfängliche Größe
         this.crc = new CRC();
+        this.pos = 0; // Position im Puffer
     }
 
     reset() {
-        this.buffer = [];
+        this.buffer = new Uint8Array(1024); // oder eine andere anfängliche Größe
         this.crc.reset();
+        this.pos = 0;
     }
 
     writeByte(b) {
-        if (b === 0x2b || b === 0x2d) {
-            this.buffer.push(0x2d); // escape in byte stream (not in CRC stream)
+        if (this.pos >= this.buffer.length) {
+            // Erweitern Sie den Puffer, wenn er voll ist
+            const newBuffer = new Uint8Array(this.buffer.length * 2);
+            newBuffer.set(this.buffer);
+            this.buffer = newBuffer;
         }
-        this.buffer.push(b);
+
+        if (b === 0x2b || b === 0x2d) {
+            this.buffer[this.pos++] = 0x2d; // escape in byte stream (not in CRC stream)
+        }
+        this.buffer[this.pos++] = b;
         this.crc.update(b);
     }
 
+    bufferpush(b) {
+        if (this.pos >= this.buffer.length) {
+            // Erweitern Sie den Puffer, wenn er voll ist
+            const newBuffer = new Uint8Array(this.buffer.length * 2);
+            newBuffer.set(this.buffer);
+            this.buffer = newBuffer;
+        }
+        this.buffer[this.pos++] = b;
+    }
+
     writeByteUnescapedNoCRC(b) {
-        this.buffer.push(b);
+        this.bufferpush(b);
     }
 
     writeCRC() {
         const crc = this.crc.get();
-        this.buffer.push(crc >> 8);
-        this.buffer.push(crc & 0xff);
+        this.bufferpush(crc >> 8);
+        this.bufferpush(crc & 0xff);
     }
 
     build(dg) {
@@ -67,10 +86,10 @@ class DatagramBuilder {
 
     bytes() {
         return this.buffer;
-    }
+    }   
 
     toString() {
-        return '[' + this.buffer.map(b => (b & 0xFF).toString(16).toUpperCase().padStart(2, '0')).join(' ') + ']';
+        return '[' + Array.from(this.buffer.subarray(0, this.pos)).map(b => (b & 0xFF).toString(16).toUpperCase().padStart(2, '0')).join(' ') + ']';
     }
     
 }
