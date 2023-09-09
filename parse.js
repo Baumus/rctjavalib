@@ -78,6 +78,21 @@ class DatagramParser {
         while (i < this.length) {
             const b = this.buffer[i] & 0xFF; // Ensure unsigned byte
      
+            // Handling of escaped bytes
+            if (!escaped) {
+                if (b === 0x2b) {
+                    state = ParserState.AwaitingCmd;
+                    i++;
+                    continue;
+                } else if (b === 0x2d) {
+                    escaped = true;
+                    i++;
+                    continue;
+                }
+            } else {
+                escaped = false; // Reset the escaped flag
+            }
+
             console.log("Parser buffer index:", i);
             console.log("Parser buffer byte:", b);
         
@@ -140,33 +155,14 @@ class DatagramParser {
                     }
                     break;
             
-                    case ParserState.AwaitingData:
-                        crc.update(b);
-                        if (escaped) {
-                            // Handle the escaped byte
-                            dg.data.push(b ^ 0x20);
-                            escaped = false;
-                        } else if (b === 0x2d) {
-                            escaped = true;
-                            continue;  // Skip the current iteration to handle the escaped byte in the next iteration
-                        } else {
-                            // 32-Bit-Integer-Handling überprüfen
-                            if (dataLength === 4 && i + 3 < this.length) {
-                                console.log("Bytes before combination:", this.buffer[i], this.buffer[i+1], this.buffer[i+2], this.buffer[i+3]);
-                                const intValue = ((this.buffer[i] & 0xFF) << 24) | ((this.buffer[i+1] & 0xFF) << 16) | ((this.buffer[i+2] & 0xFF) << 8) | (this.buffer[i+3] & 0xFF);
-                                console.log("Combined intValue:", intValue);
-                                dg.data.push(intValue);
-                                i += 3;  // Skip the next 3 bytes
-                            } else {
-                                dg.data.push(b);
-                            }
-                        }
-                        if (dg.data.length === dataLength) {
-                            state = ParserState.AwaitingCrc0;
-                        }
-                        break;
-                    
-            
+                case ParserState.AwaitingData:
+                    crc.update(b);
+                    dg.data.push(b);
+                    if (dg.data.length === dataLength) {
+                        state = ParserState.AwaitingCrc0;
+                    }
+                    break;
+             
                 case ParserState.AwaitingCrc0:
                     crcReceived = b << 8;
                     state = ParserState.AwaitingCrc1;
@@ -174,9 +170,10 @@ class DatagramParser {
             
                 case ParserState.AwaitingCrc1:
                     crcReceived |= b;
+                    console.log("Received CRC:", crcReceived);
                     const crcCalculated = crc.get();
                     if (crcCalculated !== crcReceived) {
-                        //throw new RecoverableError(`CRC mismatch. Calculated: ${crcCalculated}, Received: ${crcReceived}`);
+                        throw new RecoverableError(`CRC mismatch. Calculated: ${crcCalculated}, Received: ${crcReceived}`);
                         state = ParserState.AwaitingStart;
                     } else {
                         state = ParserState.Done;
@@ -189,10 +186,7 @@ class DatagramParser {
             }  
             
             if (!escaped && (b === 0x2b || b === 0x2d)) {
-                console.log("Parsing error detected.");
-                console.log(`Current state: ${state}`);
-                console.log(`Current byte: ${b.toString(16).padStart(2, '0')}`);
-                console.log(`Buffer position: ${i}`);
+                console.log(`Parsing error detected at state: ${state}, at byte: ${b.toString(16).padStart(2, '0')}, at Buffer position: ${i}`);
             }  
         i++;
         }

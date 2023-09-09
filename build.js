@@ -2,13 +2,13 @@ const CRC = require('./crc.js');
 
 class DatagramBuilder {
     constructor() {
-        this.buffer = new Uint8Array(1024); // oder eine andere anfängliche Größe
+        this.buffer = new Uint8Array(8); // oder eine andere anfängliche Größe
         this.crc = new CRC();
         this.pos = 0; // Position im Puffer
     }
 
     reset() {
-        this.buffer = new Uint8Array(1024); // oder eine andere anfängliche Größe
+        this.buffer = new Uint8Array(8); // oder eine andere anfängliche Größe
         this.crc.reset();
         this.pos = 0;
     }
@@ -31,7 +31,7 @@ class DatagramBuilder {
     bufferpush(b) {
         if (this.pos >= this.buffer.length) {
             // Erweitern Sie den Puffer, wenn er voll ist
-            const newBuffer = new Uint8Array(this.buffer.length * 2);
+            const newBuffer = new Uint8Array(this.buffer.length + 1);
             newBuffer.set(this.buffer);
             this.buffer = newBuffer;
         }
