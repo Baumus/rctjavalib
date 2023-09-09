@@ -89,7 +89,7 @@ describe('DatagramBuilder Validations', () => {
     });
 
 });
-/*
+
 describe('DatagramParser Validations', () => {
     let parser;
 
@@ -114,6 +114,7 @@ describe('DatagramParser Validations', () => {
     });
 });
 
+/*
 // Basic Parsing Tests
 describe('Basic Parsing Tests', () => {
     let parser;
