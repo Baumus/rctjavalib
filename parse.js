@@ -4,7 +4,7 @@
  */
 const { RecoverableError, isRecoverableError } = require('./recoverable.js');
 const CRC = require('./crc.js');
-const { Command } = require('./datagram.js');
+const { Command, Datagram } = require('./datagram.js');
 
 /**
  * Enumeration of parser states representing different stages of the parsing process.
@@ -29,7 +29,7 @@ class DatagramParser {
      * Sets up the initial state and buffer for parsing.
      */
     constructor() {
-        this.dg = { id: 0 };
+        //this.dg = { id: 0 };
         this.buffer = new Uint8Array(1024); // Standardpuffergröße
         this.length = 0;
         this.pos = 0;
@@ -59,7 +59,7 @@ class DatagramParser {
         let crcReceived = 0;
         let escaped = false;
         let state = ParserState.AwaitingStart;
-        let dg = {};
+        let dg = new Datagram();
 
         //debug purposes
         console.log("Buffer content:", this.buffer);
@@ -146,7 +146,7 @@ class DatagramParser {
             
                 case ParserState.AwaitingId3:
                     crc.update(b);
-                    dg.id |= b;
+                    dg.id = (dg.id | b) >>> 0;   // Ensure the result is treated as an unsigned 32-bit integer
                     dg.data = [];  // Das entspricht make([]byte, 0, dataLength) in Go
                     if (dataLength > 0) {
                         state = ParserState.AwaitingData;

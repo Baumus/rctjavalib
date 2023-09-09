@@ -2,8 +2,9 @@
 const net = require('net');
 const DatagramBuilder = require('./build.js');
 const DatagramParser = require('./parse.js');
+const { Datagram, Command, Identifier } = require('./datagram.js');
 const Cache = require('./cache.js');
-const RecoverableError = require('./recoverable.js');
+const { RecoverableError } = require('./recoverable.js');
 
 const DIAL_TIMEOUT = 5000; // 5 seconds in milliseconds
 
@@ -87,12 +88,12 @@ class Connection {
             return cachedDg[0];
         }
 
-        this.builder.build({ cmd: 'Read', id, data: null });
+        this.builder.build({ cmd: Command.READ, id, data: null });
         await this.send(this.builder);
         const dg = await this.receive();
 
-        if (dg.cmd !== 'Response' || dg.id !== id) {
-            throw new RecoverableError(`Invalid response to read of ${id}: ${dg}`);
+        if (dg.cmd !== Command.RESPONSE || dg.id !== id) {
+            throw new RecoverableError(`Mismatch of requested read of id: ${id} and response from source: ${JSON.stringify(dg)}`);
         }
 
         this.cache.put(dg);
