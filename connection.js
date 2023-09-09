@@ -87,19 +87,26 @@ class Connection {
         if (cachedDg[1]) {
             return cachedDg[0];
         }
-
-        this.builder.build({ cmd: Command.READ, id, data: null });
-        await this.send(this.builder);
-        const dg = await this.receive();
-
-        if (dg.cmd !== Command.RESPONSE || dg.id !== id) {
-            throw new RecoverableError(`Mismatch of requested read of id: ${id} and response from source: ${JSON.stringify(dg)}`);
+    
+        let attempts = 5;
+        let dg;
+    
+        while (attempts > 0) {
+            this.builder.build({ cmd: Command.READ, id, data: null });
+            await this.send(this.builder);
+            dg = await this.receive();
+    
+            if (dg.cmd === Command.RESPONSE && dg.id === id) {
+                this.cache.put(dg);
+                return dg;
+            }
+    
+            attempts--;
         }
-
-        this.cache.put(dg);
-        return dg;
+    
+        throw new RecoverableError(`Mismatch of requested read of id: ${id} and response from source: ${JSON.stringify(dg)}`);
     }
-
+    
     async queryFloat32(id) {
         const dg = await this.query(id);
         return dg.float32();
