@@ -29,7 +29,6 @@ class DatagramParser {
      * Sets up the initial state and buffer for parsing.
      */
     constructor() {
-        //this.dg = { id: 0 };
         this.buffer = new Uint8Array(1024); // Standardpuffergröße
         this.length = 0;
         this.pos = 0;
@@ -61,17 +60,16 @@ class DatagramParser {
         let state = ParserState.AwaitingStart;
         let dg = new Datagram();
 
-        //debug purposes
-        console.log("Buffer content:", this.buffer);
+        //console.log("Buffer content:", this.buffer);
         let startIndex = this.buffer.indexOf(0x2B);
         if (startIndex === -1) {
             throw new RecoverableError('Missing start byte');
         }
         state = ParserState.AwaitingCmd;
     
-        console.log("Parser start index:", startIndex);
-        console.log("Parser buffer length:", this.buffer.length);
-        console.log("Parser buffer state:", state);
+        //console.log("Parser start index:", startIndex);
+        //console.log("Parser buffer length:", this.buffer.length);
+        //console.log("Parser buffer state:", state);
 
         this.length = this.buffer.length;
         let i = startIndex + 1; // Überspringen Sie das Startbyte und gehen Sie zum nächsten Byte über
@@ -93,10 +91,9 @@ class DatagramParser {
                 escaped = false; // Reset the escaped flag
             }
 
-            console.log("Parser buffer index:", i);
-            console.log("Parser buffer byte:", b);
-        
-            console.log(`(state: ${state})-${b.toString(16).padStart(2, '0')}->`);
+            //console.log("Parser buffer index:", i);
+            //console.log("Parser buffer byte:", b);        
+            //console.log(`(state: ${state})-${b.toString(16).padStart(2, '0')}->`);
          
             switch (state) {
                 case ParserState.AwaitingStart:
@@ -186,7 +183,7 @@ class DatagramParser {
             }  
             
             if (!escaped && (b === 0x2b || b === 0x2d)) {
-                console.log(`Parsing error detected at state: ${state}, at byte: ${b.toString(16).padStart(2, '0')}, at Buffer position: ${i}`);
+            //    console.log(`Parsing error detected at state: ${state}, at byte: ${b.toString(16).padStart(2, '0')}, at Buffer position: ${i}`);
             }  
         i++;
         }
