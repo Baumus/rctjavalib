@@ -106,12 +106,12 @@ class DatagramParser {
                     crc.reset();
                     crc.update(b);
                     dg.cmd = b;
-                    console.log("Parsed command value:", dg.cmd);
+                    //console.log("Parsed command value:", dg.cmd);
 
                     if (Object.values(Command).includes(dg.cmd)) { 
                         state = ParserState.AwaitingLen;
                     } else {
-                        console.log("Unrecognized command byte:", dg.cmd);
+                        //console.log("Unrecognized command byte:", dg.cmd);
                         state = ParserState.AwaitingStart;
                     }
                     break;              
@@ -167,7 +167,7 @@ class DatagramParser {
             
                 case ParserState.AwaitingCrc1:
                     crcReceived |= b;
-                    console.log("Received CRC:", crcReceived);
+                    //console.log("Received CRC:", crcReceived);
                     const crcCalculated = crc.get();
                     if (crcCalculated !== crcReceived) {
                         throw new RecoverableError(`CRC mismatch. Calculated: ${crcCalculated}, Received: ${crcReceived}`);
@@ -189,7 +189,7 @@ class DatagramParser {
         }
 
         if (state !== ParserState.Done) {
-            console.error("Failed to parse data at state:", state, "with buffer:", this.buffer.toString());
+            //console.error("Failed to parse data at state:", state, "with buffer:", this.buffer.toString());
             throw new RecoverableError(`Parsing failed in state ${state}. Buffer content: ${this.buffer.toString()}`);
         }      
         return dg;
