@@ -60,7 +60,7 @@ class DatagramParser {
         let state = ParserState.AwaitingStart;
         let dg = new Datagram();
 
-        //console.log("Buffer content:", this.buffer);
+        console.log("Buffer content:", this.buffer);
         let startIndex = this.buffer.indexOf(0x2B);
         if (startIndex === -1) {
             throw new RecoverableError('Missing start byte');

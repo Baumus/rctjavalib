@@ -66,6 +66,8 @@ class Identifier {
     static BATTERY_SOC_TARGET_MIN = 0xCE266F0F;
     static BATTERY_SOC_TARGET_MIN_ISLAND = 0x8EBF9574;
 
+    static INVERTER_SN = 0x7924ABD9;
+
     static toString(id) {
         const identifiers = {
             [Identifier.SOLAR_GEN_A_POWER_W]: "Solar generator A power [W]",
@@ -94,7 +96,8 @@ class Identifier {
             [Identifier.BATTERY_SOC_TARGET]: "Battery SoC target",
             [Identifier.BATTERY_SOC_TARGET_HIGH]: "Battery SoC target high",
             [Identifier.BATTERY_SOC_TARGET_MIN]: "Battery SoC target min",
-            [Identifier.BATTERY_SOC_TARGET_MIN_ISLAND]: "Battery SoC target min island"
+            [Identifier.BATTERY_SOC_TARGET_MIN_ISLAND]: "Battery SoC target min island",
+            [Identifier.INVERTER_SN]: "Inverter serial number"
         };
 
         return identifiers[id] || "#INVALID";
