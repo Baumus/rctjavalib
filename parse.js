@@ -60,7 +60,7 @@ class DatagramParser {
         let state = ParserState.AwaitingStart;
         let dg = new Datagram();
 
-        console.log("Buffer content:", this.buffer);
+        //console.log("Buffer content:", this.buffer);
         let startIndex = this.buffer.indexOf(0x2B);
         if (startIndex === -1) {
             throw new RecoverableError('Missing start byte');
@@ -145,6 +145,7 @@ class DatagramParser {
                     crc.update(b);
                     dg.id = (dg.id | b) >>> 0;   // Ensure the result is treated as an unsigned 32-bit integer
                     dg.data = [];  // Das entspricht make([]byte, 0, dataLength) in Go
+
                     if (dataLength > 0) {
                         state = ParserState.AwaitingData;
                     } else {

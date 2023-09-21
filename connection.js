@@ -107,6 +107,11 @@ class Connection {
         throw new RecoverableError(`Mismatch of requested read of id: ${id} and response from source: ${JSON.stringify(dg)}`);
     }
     
+    async queryString(id) {
+        const dg = await this.query(id);
+        return dg.data.map(b => String.fromCharCode(b)).join('').trim();
+    }
+    
     async queryFloat32(id) {
         const dg = await this.query(id);
         return dg.float32();
