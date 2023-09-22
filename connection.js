@@ -88,7 +88,7 @@ class Connection {
             return cachedDg[0];
         }
     
-        let attempts = 5;
+        let attempts = 10;
         let dg;
     
         while (attempts > 0) {
