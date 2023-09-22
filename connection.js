@@ -110,11 +110,16 @@ class Connection {
 
             } catch (error) {
 
-                attempt++; // Erhöhen Sie den Versuchszähler bei einem Fehler
-                console.error(`Fehler beim Abrufen der Daten, Versuch ${attempt} von ${maxRetries}:`, error);
-        
-                if (attempt < maxRetries) {
-                console.log('Starte einen neuen Versuch...');
+                if (error instanceof RecoverableError) {
+                    // Loggen Sie den Fehler und starten Sie einen neuen Versuch
+                    console.error(`Recoverable error during parsing, attempt ${attempt} of ${maxRetries}:`, error.message);
+                    attempt++;
+                    if (attempt < maxRetries) {
+                        console.log('Starting a new attempt...');
+                    }
+                } else {
+                    // Wenn der Fehler nicht wiederherstellbar ist, werfen Sie ihn erneut
+                    throw error;
                 }
 
             }   
