@@ -72,12 +72,16 @@ class Connection {
 
         return new Promise((resolve, reject) => {
             this.conn.on('data', (data) => {
-                this.parser.reset();
-                this.parser.buffer = data;
-                this.parser.length = data.length;
-                const dg = this.parser.parse();
-                if (dg) resolve(dg);
-                else reject(new RecoverableError('Parsing failed'));
+                try {
+                    this.parser.reset();
+                    this.parser.buffer = data;
+                    this.parser.length = data.length;
+                    const dg = this.parser.parse();
+                    if (dg) resolve(dg);
+                    else reject(new RecoverableError('Parsing failed'));
+                } catch (error) {
+                    reject(error);
+                }
             });
         });
     }
