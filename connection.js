@@ -88,23 +88,37 @@ class Connection {
             return cachedDg[0];
         }
     
-        let attempts = 10;
         let dg;
+        this.builder.build({ cmd: Command.READ, id, data: null });
     
-        while (attempts > 0) {
-            this.builder.build({ cmd: Command.READ, id, data: null });
-            await this.send(this.builder);
-            dg = await this.receive();
-    
-            if (dg.cmd === Command.RESPONSE && dg.id === id) {
-                this.cache.put(dg);
-                return dg;
-            }
-    
-            attempts--;
-        }
-    
-        throw new RecoverableError(`Mismatch of requested read of id: ${id} and response from source: ${JSON.stringify(dg)}`);
+        const maxRetries = 10; // Anzahl der maximalen Versuche
+        let attempt = 0; // Aktueller Versuch
+        let success = false; // Flag, um den Erfolg des Versuchs zu überprüfen
+
+        while (attempt < maxRetries && !success) {
+            try {
+
+                await this.send(this.builder);
+                dg = await this.receive();
+        
+                if (dg.cmd === Command.RESPONSE && dg.id === id) {
+                    this.cache.put(dg);
+                    return dg;
+                } else {   
+                    throw new RecoverableError(`Mismatch of requested read of id: ${id} and response from source: ${JSON.stringify(dg)}`);
+                }
+
+            } catch (error) {
+
+                attempt++; // Erhöhen Sie den Versuchszähler bei einem Fehler
+                console.error(`Fehler beim Abrufen der Daten, Versuch ${attempt} von ${maxRetries}:`, error);
+        
+                if (attempt < maxRetries) {
+                console.log('Starte einen neuen Versuch...');
+                }
+
+            }   
+        } 
     }
     
     async queryString(id) {
