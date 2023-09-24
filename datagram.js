@@ -43,6 +43,7 @@ class Identifier {
     static TOTAL_GRID_POWER_W = 0x91617C58;
     static BATTERY_SOC = 0x959930BF;
     static S0_EXTERNAL_POWER_W = 0xE96F1844;
+    status LOAD_HOUSEHOLD_POWER_W = 0x1AC87AA0;
 
     static SOLAR_GEN_A_VOLTAGE = 0xB298395D;
     static SOLAR_GEN_B_VOLTAGE = 0x5BB8075A;
@@ -78,6 +79,7 @@ class Identifier {
             [Identifier.TOTAL_GRID_POWER_W]: "Total grid power [W]",
             [Identifier.BATTERY_SOC]: "Battery state of charge",
             [Identifier.S0_EXTERNAL_POWER_W]: "S0 External power [W]",
+            [Identifier.LOAD_HOUSEHOLD_POWER_W]: "Load household power [W]",
             [Identifier.SOLAR_GEN_A_VOLTAGE]: "Solar generator A voltage [V]",
             [Identifier.SOLAR_GEN_B_VOLTAGE]: "Solar generator B voltage [V]",
             [Identifier.BATTERY_VOLTAGE]: "Battery voltage [V]",
