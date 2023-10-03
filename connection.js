@@ -16,9 +16,14 @@ class Connection {
         this.cache = new Cache(cacheDuration);
         this.conn = null;
 
-        // If a connection for this host already exists, use it
+        // If a connection for this host already exists, check if it's alive
         if (Connection.connectionCache.has(host)) {
-            return Connection.connectionCache.get(host);
+            const cachedConn = Connection.connectionCache.get(host);
+            if (cachedConn.conn) {
+                // The cached connection is alive, use it
+                return cachedConn;
+            }
+            // If we reach here, the cached connection is dead and we'll continue to create a new one
         }
 
         Connection.connectionCache.set(host, this);
@@ -41,6 +46,7 @@ class Connection {
             this.conn.end();
             this.conn = null;
         }
+        Connection.connectionCache.delete(this.host); // Verbindung ist tot, kein Bedarf mehr zu cachen
     }
 
     async send(rdb) {
