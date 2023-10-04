@@ -66,6 +66,7 @@ class Identifier {
     static BATTERY_SOC_TARGET_HIGH = 0xB84A38AB;
     static BATTERY_SOC_TARGET_MIN = 0xCE266F0F;
     static BATTERY_SOC_TARGET_MIN_ISLAND = 0x8EBF9574;
+    static BATTERY_SOH = 0x381B8BF9;
 
     static INVERTER_SN = 0x7924ABD9;
 
@@ -99,7 +100,8 @@ class Identifier {
             [Identifier.BATTERY_SOC_TARGET_HIGH]: "Battery SoC target high",
             [Identifier.BATTERY_SOC_TARGET_MIN]: "Battery SoC target min",
             [Identifier.BATTERY_SOC_TARGET_MIN_ISLAND]: "Battery SoC target min island",
-            [Identifier.INVERTER_SN]: "Inverter serial number"
+            [Identifier.INVERTER_SN]: "Inverter serial number",
+            [Identifier.BATTERY_SOH]: "Battery state of health"
         };
 
         return identifiers[id] || "#INVALID";
