@@ -9,8 +9,9 @@ const { RecoverableError } = require('./recoverable.js');
 const DIAL_TIMEOUT = 5000; // 5 seconds in milliseconds
 
 class Connection {
-    constructor(host, cacheDuration) {
+    constructor(host, port, cacheDuration) {
         this.host = host;
+        this.port = port;
         this.builder = new DatagramBuilder();
         this.parser = new DatagramParser();
         this.cache = new Cache(cacheDuration);
@@ -30,7 +31,7 @@ class Connection {
     }
 
     async connect() {
-        this.conn = net.createConnection({ host: this.host, port: 8899 });
+        this.conn = net.createConnection({ host: this.host, port: this.port });
         this.conn.on('error', (err) => {
             console.error('Connection error:', err);
         });        
