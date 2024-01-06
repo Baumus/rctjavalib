@@ -4,12 +4,13 @@ A library for communication with solar power inverters of the RCT power brand. T
 
 RCT power is a registered trademark of RCT Power GmbH. This library is not provided by, endorsed by, supported by, or affiliated with the company in any way.
 
-This library is a Java adaptation of the original Go-based library developed by Markus Noga. You can find the original library and its source code at mlnoga's GitHub repository.
+This library is a Java adaptation of the original Go-based library developed by Markus Noga, enhanced with additional features.
 
 It is provided without any warranties, entirely for use at your own risk under an LGPL 2.1 license.
 
+
 ## Credits
-This project is based on the work of Markus Noga. The original Go-based library, which served as a foundation for this Java adaptation, can be found at https://github.com/mlnoga/rct. I thank Markus Noga for his valuable contribution to the community.
+This project is based on the work of Markus Noga. His Go-based library can be found at https://github.com/mlnoga/rct. I thank Markus Noga for his valuable contribution to the community. Likewise, thanks to Stefan Valouch for his extensive insights and documentation provided with his project available at https://github.com/svalouch/python-rctclient that have contributed to the completion of this project.
 
 
 ## Installation
