@@ -9,10 +9,17 @@
   "jest": {
     "testEnvironment": "node"
   },
-  "keywords": ["rct-power","javascript","battery","solar","pv"],
+  "keywords": [
+    "rct-power",
+    "javascript",
+    "battery",
+    "solar",
+    "pv"
+  ],
   "author": "",
   "license": "LGPL-2.1",
   "devDependencies": {
-    "jest": "^29.6.4"
+    "jest": "^29.7.0",
+    "sinon": "^17.0.1"
   }
 }

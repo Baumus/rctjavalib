@@ -35,43 +35,50 @@ class Connection {
         this.conn.on('error', (err) => {
             console.error('Connection error:', err);
         });        
-        this.conn.setTimeout(DIAL_TIMEOUT);
+    
         return new Promise((resolve, reject) => {
             this.conn.on('connect', resolve);
-            this.conn.on('error', reject);
+            this.conn.on('error', (err) => {
+                if (err.code === 'EHOSTUNREACH') {
+                    reject(new Error(`The target device ${this.host}:${this.port} is unreachable.`));
+                } else {
+                    reject(err);
+                }
+            });
         });
     }
-
+    
     close() {
         if (this.conn) {
             this.conn.end();
             this.conn = null;
         }
-        Connection.connectionCache.delete(this.host); // Verbindung ist tot, kein Bedarf mehr zu cachen
+        Connection.connectionCache.delete(this.host); // Connection is dead, no need to cache anymore
     }
 
     async send(rdb) {
         if (!this.conn) {
-            await this.connect();
+            try {
+                await this.connect();
+            } catch (error) {
+                console.error('Error establishing the connection:', error.message);
+                throw error;
+            }
         }
-
+    
         return new Promise((resolve, reject) => {
             this.conn.write(Buffer.from(rdb.bytes()), (err) => {
                 if (err) {
+                    console.error('Error while sending:', err.message);
                     this.close();
-                    this.connect().then(() => {
-                        this.conn.write(rdb.bytes(), (err2) => {
-                            if (err2) reject(err2);
-                            else resolve();
-                        });
-                    }).catch(reject);
+                    reject(err);
                 } else {
                     resolve();
                 }
             });
         });
     }
-
+    
     async receive() {
         if (!this.conn) {
             await this.connect();
@@ -102,9 +109,9 @@ class Connection {
         let dg;
         this.builder.build({ cmd: Command.READ, id, data: null });
     
-        const maxRetries = 10; // Anzahl der maximalen Versuche
-        let attempt = 0; // Aktueller Versuch
-        let success = false; // Flag, um den Erfolg des Versuchs zu überprüfen
+        const maxRetries = 10; // Number of maximum retries
+        let attempt = 0; // Current attempt
+        let success = false; // Flag to check the success of the attempt
 
         while (attempt < maxRetries && !success) {
             try {
@@ -122,14 +129,14 @@ class Connection {
             } catch (error) {
 
                 if (error instanceof RecoverableError) {
-                    // Loggen Sie den Fehler und starten Sie einen neuen Versuch
+                    // Log the error and start a new attempt
                     console.error(`Recoverable error during parsing, attempt ${attempt} of ${maxRetries}:`, error.message);
                     attempt++;
                     if (attempt < maxRetries) {
                         console.log('Starting a new attempt...');
                     }
                 } else {
-                    // Wenn der Fehler nicht wiederherstellbar ist, werfen Sie ihn erneut
+                    // If the error is not recoverable, rethrow it
                     throw error;
                 }
 
@@ -144,6 +151,9 @@ class Connection {
     
     async queryFloat32(id) {
         const dg = await this.query(id);
+        if (typeof dg.float32 !== 'function') {
+            throw new Error(`Invalid answer from device for identifier ${id}`);
+        }
         return dg.float32();
     }
 
