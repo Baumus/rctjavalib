@@ -111,7 +111,7 @@ class Connection {
 
         const maxRetries = 10; // Number of maximum retries
         let attempt = 0; // Current attempt
-        let delay = baseDelay; // Start delay
+        let delay = 100; // Start delay
 
         while (attempt < maxRetries) {
             try {
