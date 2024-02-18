@@ -32,17 +32,17 @@ class Connection {
 
     async connect() {
         this.conn = net.createConnection({ host: this.host, port: this.port });
-        this.conn.on('error', (err) => {
-            console.error('Connection error:', err);
-        });        
     
         return new Promise((resolve, reject) => {
             this.conn.on('connect', resolve);
             this.conn.on('error', (err) => {
+                console.error('Connection error:', err); // Log the original error
                 if (err.code === 'EHOSTUNREACH') {
-                    reject(new Error(`The target device ${this.host}:${this.port} is unreachable.`));
+                    // Create a new error message, but keep the original error object
+                    err.message = `The target device ${this.host}:${this.port} is unreachable: ${err.message}`;
+                    reject(err); // Reject the original error object with the modified message
                 } else {
-                    reject(err);
+                    reject(err); // Reject the original error object
                 }
             });
         });
@@ -105,44 +105,43 @@ class Connection {
         if (cachedDg[1]) {
             return cachedDg[0];
         }
-    
+
         let dg;
         this.builder.build({ cmd: Command.READ, id, data: null });
-    
+
         const maxRetries = 10; // Number of maximum retries
         let attempt = 0; // Current attempt
-        let success = false; // Flag to check the success of the attempt
+        let delay = baseDelay; // Start delay
 
-        while (attempt < maxRetries && !success) {
+        while (attempt < maxRetries) {
             try {
-
                 await this.send(this.builder);
                 dg = await this.receive();
-        
+
                 if (dg.cmd === Command.RESPONSE && dg.id === id) {
                     this.cache.put(dg);
                     return dg;
-                } else {   
+                } else {
                     throw new RecoverableError(`Mismatch of requested read of id: ${id} and response from source: ${JSON.stringify(dg)}`);
                 }
-
             } catch (error) {
-
                 if (error instanceof RecoverableError) {
-                    // Log the error and start a new attempt
-                    console.error(`Recoverable error during parsing, attempt ${attempt} of ${maxRetries}:`, error.message);
+                    console.error(`Recoverable error during parsing, attempt ${attempt + 1} of ${maxRetries}:`, error.message);
                     attempt++;
                     if (attempt < maxRetries) {
-                        console.log('Starting a new attempt...');
+                        console.log(`Waiting ${delay}ms before retrying...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= backoffMultiplier; // Increase the delay for the next attempt
                     }
                 } else {
-                    // If the error is not recoverable, rethrow it
                     throw error;
                 }
+            }
+        }
 
-            }   
-        } 
+        throw new Error(`Max retries reached for id: ${id}`);
     }
+    
     
     async queryString(id) {
         const dg = await this.query(id);
@@ -151,12 +150,12 @@ class Connection {
     
     async queryFloat32(id) {
         const dg = await this.query(id);
-        if (typeof dg.float32 !== 'function') {
-            throw new Error(`Invalid answer from device for identifier ${id}`);
+        if (!dg || typeof dg.float32 !== 'function') {
+            throw new Error(`Invalid answer from device for identifier ${id}: response is ${dg ? `not a function, got ${typeof dg.float32}` : 'null or undefined'}`);
         }
         return dg.float32();
     }
-
+  
     async queryUint16(id) {
         const dg = await this.query(id);
         return dg.uint16();
