@@ -112,6 +112,7 @@ class Connection {
         const maxRetries = 10; // Number of maximum retries
         let attempt = 0; // Current attempt
         let delay = 100; // Start delay
+        const backoffMultiplier = 2; // Backoff multiplier
 
         while (attempt < maxRetries) {
             try {
