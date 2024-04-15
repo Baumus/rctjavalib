@@ -1,4 +1,3 @@
-
 const net = require('net');
 const DatagramBuilder = require('./build.js');
 const DatagramParser = require('./parse.js');
@@ -159,15 +158,21 @@ class Connection {
   
     async queryUint16(id) {
         const dg = await this.query(id);
+        if (!dg || typeof dg.uint16 !== 'function') {
+            throw new Error(`Invalid answer from device for identifier ${id}: response is ${dg ? `not a function, got ${typeof dg.uint16}` : 'null or undefined'}`);
+        }
         return dg.uint16();
     }
 
     async queryUint8(id) {
         const dg = await this.query(id);
+        if (!dg || typeof dg.uint8 !== 'function') {
+            throw new Error(`Invalid answer from device for identifier ${id}: response is ${dg ? `not a function, got ${typeof dg.uint8}` : 'null or undefined'}`);
+        }
         return dg.uint8();
     }
 }
 
 Connection.connectionCache = new Map();
 
-module.exports = Connection; 
+module.exports = Connection;
