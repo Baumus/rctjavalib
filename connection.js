@@ -145,7 +145,12 @@ class Connection {
     
     async queryString(id) {
         const dg = await this.query(id);
-        return dg.data.map(b => String.fromCharCode(b)).join('').trim();
+        const result = dg.data.map(b => String.fromCharCode(b)).join('').trim();
+
+        // Removing all non-printable characters
+        const cleanedResult = result.replace(/[^\x20-\x7E]/g, '');
+
+        return cleanedResult;
     }
     
     async queryFloat32(id) {
