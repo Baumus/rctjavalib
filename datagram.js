@@ -69,7 +69,33 @@ class Identifier {
     static BATTERY_SOH = 0x381B8BF9;
 
     static INVERTER_SN = 0x7924ABD9;
+    
+    //Module voltages and serial numbers
+    static BATTERY_MODULE_0_SERIAL = 0xFBF6D834;
+    static BATTERY_MODULE_1_SERIAL = 0x99396810;
+    static BATTERY_MODULE_2_SERIAL = 0x73489528;
+    static BATTERY_MODULE_3_SERIAL = 0x257B7612;
+    static BATTERY_MODULE_4_SERIAL = 0x4E699086;
+    static BATTERY_MODULE_5_SERIAL = 0x162491E8;
+    static BATTERY_MODULE_6_SERIAL = 0x5939EC5D;
 
+    static BATTERY_MODULE_0_UMAX = 0x3D9C51F;
+    static BATTERY_MODULE_1_UMAX = 0x3A7D5F53;
+    static BATTERY_MODULE_2_UMAX = 0xE7177DEE;
+    static BATTERY_MODULE_3_UMAX = 0xEF60C7E;
+    static BATTERY_MODULE_4_UMAX = 0xF54BC06D;
+    static BATTERY_MODULE_5_UMAX = 0x4D985F33;
+    static BATTERY_MODULE_6_UMAX = 0x804A3266;
+
+    static BATTERY_MODULE_0_UMIN = 0x889DC27F;
+    static BATTERY_MODULE_1_UMIN = 0xB4E053D4;
+    static BATTERY_MODULE_2_UMIN = 0xEECDFEFC;
+    static BATTERY_MODULE_3_UMIN = 0x18F98B6D;
+    static BATTERY_MODULE_4_UMIN = 0x6DB1FDDC;
+    static BATTERY_MODULE_5_UMIN = 0x428CCF46;
+    static BATTERY_MODULE_6_UMIN = 0x6213589B;
+
+    
     static toString(id) {
         const identifiers = {
             [Identifier.SOLAR_GEN_A_POWER_W]: "Solar generator A power [W]",
@@ -101,7 +127,28 @@ class Identifier {
             [Identifier.BATTERY_SOC_TARGET_MIN]: "Battery SoC target min",
             [Identifier.BATTERY_SOC_TARGET_MIN_ISLAND]: "Battery SoC target min island",
             [Identifier.INVERTER_SN]: "Inverter serial number",
-            [Identifier.BATTERY_SOH]: "Battery state of health"
+            [Identifier.BATTERY_SOH]: "Battery state of health",
+            [Identifier.BATTERY_MODULE_0_UMAX]: "Battery cell 0 Umax",
+            [Identifier.BATTERY_MODULE_0_UMIN]: "Battery cell 0 Umin",
+            [Identifier.BATTERY_MODULE_0_SERIAL]: "Battery cell 0 serial number",
+            [Identifier.BATTERY_MODULE_1_UMAX]: "Battery cell 1 Umax",
+            [Identifier.BATTERY_MODULE_1_UMIN]: "Battery cell 1 Umin",
+            [Identifier.BATTERY_MODULE_1_SERIAL]: "Battery cell 1 serial number",
+            [Identifier.BATTERY_MODULE_2_UMAX]: "Battery cell 2 Umax",
+            [Identifier.BATTERY_MODULE_2_UMIN]: "Battery cell 2 Umin",
+            [Identifier.BATTERY_MODULE_2_SERIAL]: "Battery cell 2 serial number",
+            [Identifier.BATTERY_MODULE_3_UMAX]: "Battery cell 3 Umax",
+            [Identifier.BATTERY_MODULE_3_UMIN]: "Battery cell 3 Umin",
+            [Identifier.BATTERY_MODULE_3_SERIAL]: "Battery cell 3 serial number",
+            [Identifier.BATTERY_MODULE_4_UMAX]: "Battery cell 4 Umax",
+            [Identifier.BATTERY_MODULE_4_UMIN]: "Battery cell 4 Umin",
+            [Identifier.BATTERY_MODULE_4_SERIAL]: "Battery cell 4 serial number",
+            [Identifier.BATTERY_MODULE_5_UMAX]: "Battery cell 5 Umax",
+            [Identifier.BATTERY_MODULE_5_UMIN]: "Battery cell 5 Umin",
+            [Identifier.BATTERY_MODULE_5_SERIAL]: "Battery cell 5 serial number",
+            [Identifier.BATTERY_MODULE_6_UMAX]: "Battery cell 6 Umax",
+            [Identifier.BATTERY_MODULE_6_UMIN]: "Battery cell 6 Umin",
+            [Identifier.BATTERY_MODULE_6_SERIAL]: "Battery cell 6 serial number"
         };
 
         return identifiers[id] || "#INVALID";
