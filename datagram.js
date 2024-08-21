@@ -206,15 +206,15 @@ class Datagram {
     }
 
     toString() {
-        let cmdStr = this.cmd.toString(16).toUpperCase();
-        let idStr = this.id.toString(16).toUpperCase();
-        let dataStr = this.data.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+        const cmdStr = this.cmd.toString(16).toUpperCase();
+        const idStr = this.id.toString(16).toUpperCase();
+        const dataStr = this.data.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
         return `[${cmdStr} ${idStr} ${dataStr}]`;
     }
      
     float32() {
         if (this.data.length !== 4) {
-            throw new RecoverableError(`invalid data length ${this.data.length}`);
+            throw new RecoverableError(`Invalid data length ${this.data.length}`);
         }
         const buffer = new ArrayBuffer(4);
         const view = new DataView(buffer);
@@ -224,14 +224,14 @@ class Datagram {
 
     uint16() {
         if (this.data.length !== 2) {
-            throw new RecoverableError(`invalid data length ${this.data.length}`);
+            throw new RecoverableError(`Invalid data length ${this.data.length}`);
         }
         return (this.data[0] << 8) | this.data[1];
     }
 
     uint8() {
         if (this.data.length !== 1) {
-            throw new RecoverableError(`invalid data length ${this.data.length}`);
+            throw new RecoverableError(`Invalid data length ${this.data.length}`);
         }
         return this.data[0];
     }

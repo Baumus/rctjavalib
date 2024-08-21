@@ -1,7 +1,6 @@
 class CRC {
     constructor() {
-        this.crc = 0xffff;
-        this.isOdd = false;
+        this.reset();  // Initialisierung durch Aufruf von reset
     }
 
     reset() {
@@ -12,12 +11,9 @@ class CRC {
     update(b) {
         let crc = this.crc;
         for (let i = 0; i < 8; i++) {
-            const bit = (b >> (7 - i) & 1) === 1;
-            const c15 = ((crc >> 15) & 1) === 1;
-            crc <<= 1;
-            if (c15 !== bit) {
-                crc ^= 0x1021;
-            }
+            const bit = (b >> (7 - i)) & 1;
+            const c15 = (crc >> 15) & 1;
+            crc = ((crc << 1) ^ (c15 !== bit ? 0x1021 : 0)) & 0xFFFF;
         }
         this.crc = crc;
         this.isOdd = !this.isOdd;
@@ -25,9 +21,9 @@ class CRC {
 
     get() {
         if (this.isOdd) {
-            this.update(0); // pad CRC stream (not byte stream) to even length
+            this.update(0); // Füge Padding hinzu, falls notwendig
         }
-        return this.crc & 0xFFFF;  // Ensure the result is a 16-bit unsigned value
+        return this.crc;
     }
 }
 
