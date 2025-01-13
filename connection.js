@@ -1,7 +1,7 @@
 const net = require('net');
 const DatagramBuilder = require('./build.js');
 const DatagramParser = require('./parse.js');
-const { Datagram, Command, Identifier } = require('./datagram.js');
+const { Datagram, Command, Identifier, SOCStrategy} = require('./datagram.js');
 const Cache = require('./cache.js'); // Verwenden des aktualisierten Cache-Codes
 const { RecoverableError } = require('./recoverable.js');
 
@@ -137,58 +137,154 @@ class Connection {
         throw new Error(`Max retries reached`);
     }
 
-    async query(id) {
-        const [cachedDg, found] = this.cache.get(id);
+    async executeCommand(command, identifier, value) {
+
+        if (!identifier.writable) {
+            throw new Error(`Identifier '${identifier.description}' is not writable.`);
+        }
+    
+         // Convert boolean to uint8 (0 or 1) if the type is 'uint8'
+        if (identifier.type === 'uint8' && typeof value === 'boolean') {
+            value = value ? 1 : 0;
+        }
+
+        if (identifier.validate && !identifier.validate(value)) {
+            throw new Error(`Invalid value '${value}' for identifier '${identifier.description}'.`);
+        }
+
+        // Transform value to binary data
+        let data;
+        switch (identifier.type) {
+            case 'float32':
+                data = new Uint8Array(4);
+                new DataView(data.buffer).setFloat32(0, value, false); // BigEndian
+                break;
+            case 'uint8':
+                data = [value & 0xFF];
+                break;
+            case 'uint16':
+                data = new Uint8Array(2);
+                new DataView(data.buffer).setUint16(0, value, false); // BigEndian
+                break;
+            case 'enum':
+                data = [value];
+                break;
+            default:
+                throw new Error(`Unsupported data type '${identifier.type}' for '${identifier.description}'.`);
+        }
+
+        const datagram = {
+            cmd: command,
+            id: identifier.id,
+            data: Array.from(data),
+        };
+
+        console.log(`Executing command '${command}' for id '${identifier.description}' with data: ${data}`);
+        
+        try {
+            // Build the datagram using the builder
+            this.builder.build(datagram);
+            // Send the datagram using the connection
+            await this.send(this.builder);
+        } catch (err) {
+            throw new Error(`Error while executing command '${command}' for id '${identifier.description}': ${err.message}`);
+        }
+    }
+
+    async query(identifier) {
+        // Ensure the id is a valid Identifier object
+        if (typeof identifier !== 'object' || !('id' in identifier && 'type' in identifier)) {
+            throw new Error(`Invalid or unknown identifier: ${JSON.stringify(identifier)}`);
+        }
+
+        const { id: numericId, type: dataTypeHandler, enumMapping } = identifier;
+
+        // Check the cache first
+        const [cachedDg, found] = this.cache.get(numericId);
         if (found) {
+            if (dataTypeHandler) {
+                return this._processDataHandler(cachedDg, dataTypeHandler, enumMapping);
+            }
             return cachedDg;
         }
 
-        this.builder.build({ cmd: Command.READ, id, data: null });
+        // Build the request datagram
+        this.builder.build({ cmd: Command.READ, id: numericId, data: null });
 
         const operation = async () => {
             await this.send(this.builder);
             const dg = await this.receive();
 
-            if (dg.cmd === Command.RESPONSE && dg.id === id) {
+            if (dg.cmd === Command.RESPONSE && dg.id === numericId) {
+                // Cache the response
                 this.cache.put(dg);
-                this.cache.cleanup(); // Bereinige den Cache nach jeder `put`-Operation
+                this.cache.cleanup(); // Clean up cache after putting a new entry
+                
+                if (dataTypeHandler) {
+                    return this._processDataHandler(dg, dataTypeHandler, enumMapping);
+                }
+
                 return dg;
+
             } else {
-                throw new RecoverableError(`Mismatch of requested read of id: ${id} and response from source: ${JSON.stringify(dg)}`);
+                throw new RecoverableError(
+                    `Mismatch between requested id '${numericId}' and response id '${
+                        dg ? JSON.stringify(dg) : 'undefined'
+                    }'`
+                );
             }
         };
 
         return await this.retryOperation(operation);
     }
 
-    async queryString(id) {
-        const dg = await this.query(id);
-        const result = dg.data.map(b => String.fromCharCode(b)).join('').trim();
-        return result.replace(/[^\x20-\x7E]/g, ''); // Nicht druckbare Zeichen entfernen
+    // Helper function for data processing
+    _processDataHandler(dg, dataTypeHandler, enumMapping = null) {
+        if (dataTypeHandler === 'string') {
+            const result = dg.data.map(b => String.fromCharCode(b)).join('').trim();
+            return result.replace(/[^\x20-\x7E]/g, ''); // Remove non-printable characters
+        }
+
+        if (dataTypeHandler === 'enum') {
+            const enumValue = dg.uint8();
+            return enumMapping ? enumMapping(enumValue) : enumValue; // Map or return raw value
+        }
+
+        if (typeof dg[dataTypeHandler] !== 'function') {
+            throw new Error(`Handler '${dataTypeHandler}' is not supported by the response.`);
+        }
+
+        return dg[dataTypeHandler]();
     }
 
-    async queryFloat32(id) {
-        const dg = await this.query(id);
-        if (!dg || typeof dg.float32 !== 'function') {
-            throw new Error(`Invalid answer from device for identifier ${id}: response is ${dg ? `not a function, got ${typeof dg.float32}` : 'null or undefined'}`);
-        }
-        return dg.float32();
+    async queryString(identifier) {
+        return await this.query(identifier, 'string');
     }
 
-    async queryUint16(id) {
-        const dg = await this.query(id);
-        if (!dg || typeof dg.uint16 !== 'function') {
-            throw new Error(`Invalid answer from device for identifier ${id}: response is ${dg ? `not a function, got ${typeof dg.uint16}` : 'null or undefined'}`);
-        }
-        return dg.uint16();
+    async queryFloat32(identifier) {
+        return await this.query(identifier, 'float32');
     }
 
-    async queryUint8(id) {
-        const dg = await this.query(id);
-        if (!dg || typeof dg.uint8 !== 'function') {
-            throw new Error(`Invalid answer from device for identifier ${id}: response is ${dg ? `not a function, got ${typeof dg.uint8}` : 'null or undefined'}`);
+    async queryUint16(identifier) {
+        return await this.query(identifier, 'uint16');
+    }
+
+    async queryUint8(identifier) {
+        return await this.query(identifier, 'uint8');
+    }
+
+    async querySOCStrategy() {
+        const strategyValue = await this.query(Identifier.POWER_MNG_SOC_STRATEGY);
+
+        //Check if the value is valid
+        if (!Object.values(SOCStrategy).includes(strategyValue)) {
+            throw new Error(`Invalid SOC strategy value received: ${strategyValue}`);
         }
-        return dg.uint8();
+
+        return {
+            value: strategyValue,
+            description: SOCStrategy.toString(strategyValue),
+        };
     }
 }
 
