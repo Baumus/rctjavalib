@@ -137,7 +137,7 @@ class Connection {
         throw new Error(`Max retries reached`);
     }
 
-    async executeCommand(command, identifier, value) {
+    async write(identifier, value) {
 
         if (!identifier.writable) {
             throw new Error(`Identifier '${identifier.description}' is not writable.`);
@@ -174,7 +174,7 @@ class Connection {
         }
 
         const datagram = {
-            cmd: command,
+            cmd: Command.WRITE,
             id: identifier.id,
             data: Array.from(data),
         };

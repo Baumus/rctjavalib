@@ -27,7 +27,7 @@ After installation, you can import and use the library in your JavaScript projec
 
 ```javascript
 const Connection = require('rctjavalib/connection.js');
-const { Identifier, SOCStrategy, Command } = require('rctjavalib/datagram.js');
+const { Identifier, SOCStrategy } = require('rctjavalib/datagram.js');
 
 // Establish a connection
 const conn = new Connection('192.168.1.100', 8899); // Host, Port
@@ -38,21 +38,21 @@ const power = await conn.query(Identifier.SOLAR_GEN_A_POWER_W);
 console.log(`Solar generator A power: ${Math.round(power)} W`);
 
 // Example: Set inverter to charge battery from grid
-await conn.executeCommand(Command.WRITE, Identifier.POWER_MNG_SOC_STRATEGY, SOCStrategy.EXTERNAL);
-await conn.executeCommand(Command.WRITE, Identifier.POWER_MNG_BATTERY_POWER_EXTERN_W, -6000);
-await conn.executeCommand(Command.WRITE, Identifier.POWER_MNG_USE_GRID_POWER_ENABLE, true);
+await conn.write(Identifier.POWER_MNG_SOC_STRATEGY, SOCStrategy.EXTERNAL);
+await conn.write(Identifier.POWER_MNG_BATTERY_POWER_EXTERN_W, -6000);
+await conn.write(Identifier.POWER_MNG_USE_GRID_POWER_ENABLE, true);
 console.log(`Charge Battery with 6000W from Power Grid`);
 
 // Example: Set inverter to charge battery from solar
-await conn.executeCommand(Command.WRITE, Identifier.POWER_MNG_SOC_STRATEGY, SOCStrategy.INTERNAL);
-await conn.executeCommand(Command.WRITE, Identifier.POWER_MNG_BATTERY_POWER_EXTERN_W, 0);
-await conn.executeCommand(Command.WRITE, Identifier.POWER_MNG_USE_GRID_POWER_ENABLE, false);
+await conn.write(Identifier.POWER_MNG_SOC_STRATEGY, SOCStrategy.INTERNAL);
+await conn.write(Identifier.POWER_MNG_BATTERY_POWER_EXTERN_W, 0);
+await conn.write(Identifier.POWER_MNG_USE_GRID_POWER_ENABLE, false);
 console.log(`Standard Battery Charge from Solar`);
 
 // Example: Set inverter to not discharge the battery
-await conn.executeCommand(Command.WRITE, Identifier.POWER_MNG_SOC_STRATEGY, SOCStrategy.EXTERNAL);
-await conn.executeCommand(Command.WRITE, Identifier.POWER_MNG_BATTERY_POWER_EXTERN_W, 0);
-await conn.executeCommand(Command.WRITE, Identifier.POWER_MNG_USE_GRID_POWER_ENABLE, true);
+await conn.write(Identifier.POWER_MNG_SOC_STRATEGY, SOCStrategy.EXTERNAL);
+await conn.write(Identifier.POWER_MNG_BATTERY_POWER_EXTERN_W, 0);
+await conn.write(Identifier.POWER_MNG_USE_GRID_POWER_ENABLE, true);
 console.log(`Discharge Lock activated`);
 
 // Close the connection when done
