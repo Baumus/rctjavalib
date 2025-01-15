@@ -179,7 +179,7 @@ class Connection {
             data: Array.from(data),
         };
 
-        console.log(`Executing command '${command}' for id '${identifier.description}' with data: ${data}`);
+        console.log(`Executing write command for id '${identifier.description}' with data: ${data}`);
         
         try {
             // Build the datagram using the builder
@@ -187,7 +187,7 @@ class Connection {
             // Send the datagram using the connection
             await this.send(this.builder);
         } catch (err) {
-            throw new Error(`Error while executing command '${command}' for id '${identifier.description}': ${err.message}`);
+            throw new Error(`Error while executing write command for id '${identifier.description}': ${err.message}`);
         }
     }
 
