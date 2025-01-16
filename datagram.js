@@ -134,6 +134,7 @@ class Identifier {
 
     // Battery values
     static INVERTER_STATE = { id: 0x5F33284E, type: 'enum', writable: false, description: "Inverter state", enumMapping: InverterStates.toString };
+    static BATTERY_STATUS = { id: 0x70A2AF4F, type: 'uint32', writable: false, description: "Current Battery status" };
     static BATTERY_CAPACITY_AH = { id: 0xB57B59BD, type: 'float32', writable: false, description: "Battery capacity [Ah]" };
     static BATTERY_TEMPERATURE_C = { id: 0x902AFAFB, type: 'float32', writable: false, description: "Battery temperature [°C]" };
     static BATTERY_SOC_TARGET = { id: 0x8B9FF008, type: 'float32', writable: false, description: "Battery SoC target" };
@@ -213,6 +214,16 @@ class Datagram {
         return view.getFloat32(0, false); // BigEndian
     }
 
+    uint32() {
+        if (this.data.length !== 4) {
+            throw new RecoverableError(`Invalid data length ${this.data.length} for uint32`);
+        }
+        const buffer = new ArrayBuffer(4);
+        const view = new DataView(buffer);
+        this.data.forEach((b, i) => view.setUint8(i, b));
+        return view.getUint32(0, false); // BigEndian
+    }
+    
     uint16() {
         if (this.data.length !== 2) {
             throw new RecoverableError(`Invalid data length ${this.data.length}`);

@@ -92,7 +92,7 @@ class Connection {
         }
 
         return new Promise((resolve, reject) => {
-            const onData = (data) => {
+            this.conn.once('data', (data) => {
                 try {
                     this.parser.reset();
                     this.parser.buffer = data;
@@ -106,9 +106,7 @@ class Connection {
                 } catch (error) {
                     reject(error);
                 }
-            };
-
-            this.conn.once('data', onData);
+            });
         });
     }
 
@@ -179,16 +177,79 @@ class Connection {
             data: Array.from(data),
         };
 
+        // Check if battery is in normal operation mode using query()
+        const batteryStatus = await this.query(Identifier.BATTERY_STATUS);
+        if (batteryStatus !== 0) {
+
+            const decodeBatteryStatus = (status) => {
+                const descriptions = {
+                    0: "Normal operation (charge/discharge)",
+                    1: "Idle (no CAN connection inverter -> battery)",
+                    3: "Connecting (inverter -> battery)",
+                    5: "Synchronizing (inverter -> battery)",
+                    8: "Calibrating - charging phase",
+                    1024: "Calibrating - discharge phase",
+                    2048: "Balancing the battery units",
+                };
+            
+                return descriptions[status] || `Unknown state (${status})`;
+            };
+
+            throw new Error(`Battery is not in normal operation mode. Current status: ${decodeBatteryStatus(batteryStatus)}`);
+        }
+        
         console.log(`Executing write command for id '${identifier.description}' with data: ${data}`);
         
-        try {
+        // Define the operation to retry
+        const operation = async () => {
             // Build the datagram using the builder
             this.builder.build(datagram);
             // Send the datagram using the connection
             await this.send(this.builder);
+
+            // Read-After-Write Verification
+            this.builder.build({ cmd: Command.READ, id: identifier.id, data: null });
+            await this.send(this.builder);
+            const dg = await this.receive();
+
+            if (dg.cmd === Command.RESPONSE && dg.id === identifier.id && this._compareArrays(dg.data, data)) {
+                console.log(`Write command for id '${identifier.description}' was successful.`);
+            } else {
+                console.error(
+                    `Write command for id '${identifier.description}' failed. Sent data: ${data}, Received data: ${dg.data}`
+                );
+                throw new RecoverableError(`Write verification failed for id '${identifier.description}'`);
+            }
+        };
+
+        // Retry the operation on recoverable errors
+        try {
+            await this.retryOperation(operation);
         } catch (err) {
             throw new Error(`Error while executing write command for id '${identifier.description}': ${err.message}`);
         }
+    }
+
+    // Helper method to compare arrays
+    _compareArrays(array1, array2) {
+        // Convert non-array types (like Uint8Array) to plain arrays
+        if (!Array.isArray(array1)) array1 = Array.from(array1);
+        if (!Array.isArray(array2)) array2 = Array.from(array2);
+    
+        // Check if lengths match
+        if (array1.length !== array2.length) {
+            return false;
+        }
+    
+        // Compare each element with type coercion, log mismatches
+        for (let i = 0; i < array1.length; i++) {
+            if (array1[i] !== array2[i]) {
+                return false;
+            }
+        }
+    
+        // Arrays match
+        return true;
     }
 
     async query(identifier) {
