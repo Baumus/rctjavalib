@@ -1,7 +1,7 @@
 const net = require('net');
 const DatagramBuilder = require('./build.js');
 const DatagramParser = require('./parse.js');
-const { Datagram, Command, Identifier, SOCStrategy} = require('./datagram.js');
+const { Datagram, Command, Identifier, SOCStrategy, BatteryStatus} = require('./datagram.js');
 const Cache = require('./cache.js'); // Verwenden des aktualisierten Cache-Codes
 const { RecoverableError } = require('./recoverable.js');
 
@@ -180,22 +180,9 @@ class Connection {
         // Check if battery is in normal operation mode using query()
         const batteryStatus = await this.query(Identifier.BATTERY_STATUS);
         if (batteryStatus !== 0) {
-
-            const decodeBatteryStatus = (status) => {
-                const descriptions = {
-                    0: "Normal operation (charge/discharge)",
-                    1: "Idle (no CAN connection inverter -> battery)",
-                    3: "Connecting (inverter -> battery)",
-                    5: "Synchronizing (inverter -> battery)",
-                    8: "Calibrating - charging phase",
-                    1024: "Calibrating - discharge phase",
-                    2048: "Balancing the battery units",
-                };
-            
-                return descriptions[status] || `Unknown state (${status})`;
-            };
-
-            throw new Error(`Battery is not in normal operation mode. Current status: ${decodeBatteryStatus(batteryStatus)}`);
+            const error = new Error(`Battery is not in normal operation mode. Current status: ${BatteryStatus.decode(batteryStatus)}`);
+            error.code = "BATTERY_NOT_NORMAL";
+            throw error;
         }
         
         console.log(`Executing write command for id '${identifier.description}' with data: ${data}`);

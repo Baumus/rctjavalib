@@ -93,6 +93,22 @@ class InverterStates {
     }
 }
 
+class BatteryStatus {
+    static DESCRIPTIONS = {
+        0: "Normal operation (charge/discharge)",
+        1: "Idle (no CAN connection inverter -> battery)",
+        3: "Connecting (inverter -> battery)",
+        5: "Synchronizing (inverter -> battery)",
+        8: "Calibrating - charging phase",
+        1024: "Calibrating - discharge phase",
+        2048: "Balancing the battery units",
+    };
+
+    static decode(status) {
+        return this.DESCRIPTIONS[status] || `Unknown state (${status})`;
+    }
+}
+
 class Identifier {
     // Power values
     static SOLAR_GEN_A_POWER_W = { id: 0xB5317B78, type: 'float32', writable: false, description: "Solar generator A power [W]" };
@@ -239,4 +255,4 @@ class Datagram {
     }
 }
 
-module.exports = { Datagram, Command, Identifier, SOCStrategy, InverterStates };
+module.exports = { Datagram, Command, Identifier, SOCStrategy, InverterStates, BatteryStatus };
