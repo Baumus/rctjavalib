@@ -27,7 +27,7 @@ class Connection {
         this._requestQueue = [];
         this._processing = false;
 
-        // Reuse from the original code: connection caching logic
+        // Connection caching logic
         if (Connection.connectionCache.has(host)) {
             const cachedConn = Connection.connectionCache.get(host);
             if (cachedConn.conn && !cachedConn.conn.destroyed) {
@@ -96,7 +96,7 @@ class Connection {
                 this.parser.buffer = this.readBuffer;
                 this.parser.length = this.readBuffer.length;
 
-                dg = this.parser.parse();  
+                dg = this.parser.parse();
             } catch (err) {
                 console.error('Parsing error:', err);
                 if (this._currentReject) {
@@ -192,72 +192,86 @@ class Connection {
     }
 
     async write(identifier, value) {
-        return this._enqueueRequest(async () => {
-            if (!identifier.writable) {
-                throw new Error(`Identifier '${identifier.description}' is not writable.`);
-            }
+        if (!identifier.writable) {
+            throw new Error(`Identifier '${identifier.description}' is not writable.`);
+        }
 
-            if (identifier.type === 'uint8' && typeof value === 'boolean') {
-                value = value ? 1 : 0;
-            }
+        if (identifier.type === 'uint8' && typeof value === 'boolean') {
+            value = value ? 1 : 0;
+        }
 
-            if (identifier.validate && !identifier.validate(value)) {
-                throw new Error(`Invalid value '${value}' for identifier '${identifier.description}'.`);
-            }
+        if (identifier.validate && !identifier.validate(value)) {
+            throw new Error(`Invalid value '${value}' for identifier '${identifier.description}'.`);
+        }
 
-            let data;
-            switch (identifier.type) {
-                case 'float32':
-                    data = new Uint8Array(4);
-                    new DataView(data.buffer).setFloat32(0, value, false);
-                    break;
-                case 'uint8':
-                    data = [value & 0xFF];
-                    break;
-                case 'uint16':
-                    data = new Uint8Array(2);
-                    new DataView(data.buffer).setUint16(0, value, false);
-                    break;
-                case 'enum':
-                    data = [value];
-                    break;
-                default:
-                    throw new Error(`Unsupported data type '${identifier.type}' for '${identifier.description}'.`);
-            }
+        let data;
+        switch (identifier.type) {
+            case 'float32':
+                data = new Uint8Array(4);
+                new DataView(data.buffer).setFloat32(0, value, false);
+                break;
+            case 'uint8':
+                data = [value & 0xFF];
+                break;
+            case 'uint16':
+                data = new Uint8Array(2);
+                new DataView(data.buffer).setUint16(0, value, false);
+                break;
+            case 'enum':
+                data = [value];
+                break;
+            default:
+                throw new Error(`Unsupported data type '${identifier.type}' for '${identifier.description}'.`);
+        }
 
-            const datagram = {
-                cmd: Command.WRITE,
-                id: identifier.id,
-                data: Array.from(data),
-            };
+        const datagram = {
+            cmd: Command.WRITE,
+            id: identifier.id,
+            data: Array.from(data),
+        };
 
-            const batteryStatus = await this.query(Identifier.BATTERY_STATUS);
-            if (batteryStatus !== 0) {
-                const error = new Error(
-                    `Battery is not in normal operation mode. Current status: ${BatteryStatus.decode(batteryStatus)}`
+        // Pre-check battery status outside of the write queue
+        const batteryStatus = await this.query(Identifier.BATTERY_STATUS);
+        if (batteryStatus !== 0) {
+            const error = new Error(
+                `Battery is not in normal operation mode. Current status: ${BatteryStatus.decode(batteryStatus)}`
+            );
+            error.code = "BATTERY_NOT_NORMAL";
+            throw error;
+        }
+
+        // Enqueue the write operation steps
+        return this._enqueueWriteOperation(identifier, datagram, data);
+    }
+
+    async _enqueueWriteOperation(identifier, datagram, data) {
+        // Enqueue sending the write command
+        await this._enqueueRequest(async () => {
+            this.builder.build(datagram);
+            await this.send(this.builder);
+            console.log(`Write command for '${identifier.description}' sent.`);
+        });
+
+        // Enqueue sending the read command to verify the write
+        await this._enqueueRequest(async () => {
+            const readDatagram = { cmd: Command.READ, id: identifier.id, data: null };
+            this.builder.build(readDatagram);
+            await this.send(this.builder);
+            console.log(`Read command for '${identifier.description}' sent.`);
+        });
+
+        // Enqueue waiting for and handling the response
+        await this._enqueueRequest(async () => {
+            const dg = await this._receive();
+
+            if (dg.cmd === Command.RESPONSE && dg.id === identifier.id && this._compareArrays(dg.data, data)) {
+                console.log(`Write verification for '${identifier.description}' was successful.`);
+            } else {
+                console.error(
+                    `Write verification for '${identifier.description}' failed. Sent data: ${data}, Received data: ${dg.data}`
                 );
-                error.code = "BATTERY_NOT_NORMAL";
-                throw error;
+                throw new RecoverableError(`Write verification failed for '${identifier.description}'`);
             }
-
-            const operation = async () => {
-                this.builder.build(datagram);
-                await this.send(this.builder);
-                this.builder.build({ cmd: Command.READ, id: identifier.id, data: null });
-                await this.send(this.builder);
-                const dg = await this._receive();
-
-                if (dg.cmd === Command.RESPONSE && dg.id === identifier.id && this._compareArrays(dg.data, data)) {
-                    console.log(`Write command for id '${identifier.description}' was successful.`);
-                } else {
-                    console.error(
-                        `Write command for id '${identifier.description}' failed. Sent data: ${data}, Received data: ${dg.data}`
-                    );
-                    throw new RecoverableError(`Write verification failed for id '${identifier.description}'`);
-                }
-            };
-
-            await this.retryOperation(operation);
         });
     }
 
@@ -332,7 +346,7 @@ class Connection {
     _processDataHandler(dg, dataTypeHandler, enumMapping = null) {
         if (dataTypeHandler === 'string') {
             const result = dg.data.map(b => String.fromCharCode(b)).join('').trim();
-            return result.replace(/[^             return result.replace(/[^\x20-~            return result.replace(/[^\x20-\x7E]/g, ''); 
+            return result.replace(/[^\x20-\x7E]/g, '');
         }
 
         if (dataTypeHandler === 'enum') {
@@ -351,6 +365,14 @@ class Connection {
     async queryFloat32(identifier) { return await this.query(identifier, 'float32'); }
     async queryUint16(identifier) { return await this.query(identifier, 'uint16'); }
     async queryUint8(identifier)  { return await this.query(identifier, 'uint8'); }
+
+    _compareArrays(arr1, arr2) {
+        if (arr1.length !== arr2.length) return false;
+        for (let i = 0; i < arr1.length; i++) {
+            if (arr1[i] !== arr2[i]) return false;
+        }
+        return true;
+    }
 }
 
 Connection.connectionCache = new Map();
