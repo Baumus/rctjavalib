@@ -4,9 +4,14 @@ const { Command, Identifier } = require('./datagram.js');
 const { RecoverableError } = require('./recoverable.js');
 
 const builderTestCases = [
-    { dg: { cmd: Command.READ, id: Identifier.BATTERY_POWER_W, data: null }, expect: "[2B 01 04 40 0F 01 5B 58 B4]" },
-    { dg: { cmd: Command.READ, id: Identifier.INVERTER_AC_POWER_W, data: null }, expect: "[2B 01 04 DB 2D 2D 69 AE 55 AB]" }
+    { dg: { cmd: Command.READ, id: Identifier.BATTERY_POWER_W.id, data: null }, expect: "[2B 01 04 40 0F 01 5B 58 B4]" },
+    { dg: { cmd: Command.READ, id: Identifier.INVERTER_AC_POWER_W.id, data: null }, expect: "[2B 01 04 DB 2D 2D 69 AE 55 AB]" }
 ];
+
+const dg = { cmd: Command.READ, id: Identifier.INVERTER_AC_POWER_W.id, data: null }; 
+const builder = new DatagramBuilder();
+builder.build(dg);
+console.log(builder.toString());
 
 describe('DatagramBuilder and DatagramParser Tests', () => {
 
@@ -55,37 +60,37 @@ describe('DatagramBuilder Validations', () => {
     test('should throw error for dg.id value of -1', () => {
         expect(() => {
             builder.build({ id: -1, cmd: 1, data: [1, 2, 3] });
-        }).toThrow('Invalid id value');
+        }).toThrow('Invalid ID: -1');
     });
 
     test('should throw error for dg.id value of 0x100000000', () => {
         expect(() => {
             builder.build({ id: 0x100000000, cmd: 1, data: [1, 2, 3] });
-        }).toThrow('Invalid id value');
+        }).toThrow('Invalid ID: 4294967296');
     });
 
     test('should throw error for dg.data value containing -1', () => {
         expect(() => {
             builder.build({ id: 1, cmd: 1, data: [-1, 2, 3] });
-        }).toThrow('Invalid byte value in data');
+        }).toThrow('Invalid data byte -1');
     });
 
     test('should throw error for dg.data value containing 256', () => {
         expect(() => {
             builder.build({ id: 1, cmd: 1, data: [256, 2, 3] });
-        }).toThrow('Invalid byte value in data');
+        }).toThrow('Invalid data byte 256');
     });
 
     test('should throw error for dg.cmd value of -1', () => {
         expect(() => {
             builder.build({ id: 1, cmd: -1, data: [1, 2, 3] });
-        }).toThrow('Invalid command value');
+        }).toThrow('Invalid command: -1');
     });
 
     test('should throw error for dg.cmd value of 256', () => {
         expect(() => {
             builder.build({ id: 1, cmd: 256, data: [1, 2, 3] });
-        }).toThrow('Invalid command value');
+        }).toThrow('Invalid command: 256');
     });
 
 });

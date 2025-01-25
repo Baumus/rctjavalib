@@ -1,203 +1,167 @@
-/**
- * DatagramParser: A class responsible for parsing datagrams based on a state machine approach.
- * It handles unsigned 32-bit integers and provides detailed error messages for parsing failures.
- */
-const { RecoverableError, isRecoverableError } = require('./recoverable.js');
+// parse.js
+const { RecoverableError } = require('./recoverable.js');
 const CRC = require('./crc.js');
-const { Command, Datagram } = require('./datagram.js');
+const { Datagram } = require('./datagram.js');
 
-/**
- * Enumeration of parser states representing different stages of the parsing process.
- */
-const ParserState = {
-    AwaitingStart: 0,
-    AwaitingCmd: 1,
-    AwaitingLen: 2,
-    AwaitingId0: 3,
-    AwaitingId1: 4,
-    AwaitingId2: 5,
-    AwaitingId3: 6,
-    AwaitingData: 7,
-    AwaitingCrc0: 8,
-    AwaitingCrc1: 9,
-    Done: 10
-};
+// For reference:
+const START_BYTE = 0x2B;
 
 class DatagramParser {
-    /**
-     * Initializes a new instance of the DatagramParser.
-     * Sets up the initial state and buffer for parsing.
-     */
     constructor() {
-        this.buffer = new Uint8Array(1024); // Standardpuffergröße
+        this.buffer = new Uint8Array(0);
         this.length = 0;
-        this.pos = 0;
-        this.state = ParserState.AwaitingStart;
     }
 
-    /**
-     * Resets the parser to its initial state.
-     * Useful for starting a new parsing process or recovering from an error.
-     */
     reset() {
-        this.length = 0;
-        this.pos = 0;
-        this.state = ParserState.AwaitingStart;
+        // If you have parser state, reset it here
+    }
+
+    parse() {
+        // 1) Find first 0x2B that is NOT preceded by 0x2D (escape)
+        const startIndex = this._findStartIndex();
+        if (startIndex < 0) return null; // no start token yet
+
+        // 2) Unescape everything from startIndex forward
+        //    until we can parse a complete frame
+        const unescaped = this._unescapeFrame(startIndex);
+        if (!unescaped) return null; // not enough data to unescape or incomplete?
+
+        // unescaped is an array of bytes: [cmd, length, ID..., data..., CRC(2 bytes)]
+        // 3) Check we have at least cmd(1) + length(1) + ID(4) + CRC(2) => 8 bytes
+        if (unescaped.length < 8) {
+            // we have cmd(1), length(1), ID(4) => 6 so far, plus 2 CRC => 8
+            return null;
+        }
+
+        // 4) Extract cmd, length
+        const cmd = unescaped[0];
+        const length = unescaped[1];
+        if (length < 4) {
+            // short frame => possibly a heartbeat or ack; skip
+            throw new RecoverableError(`Short frame with length=${length}, ignoring...`);
+        }
+
+        // Check if unescaped buffer is big enough for ID(4) + data(length-4) + CRC(2)
+        const totalNeeded = 2 /*cmd+length*/ + length + 2 /*crc*/;
+        if (unescaped.length < totalNeeded) {
+            return null; // incomplete
+        }
+
+        // 5) ID
+        let offset = 2;
+        let id = 0;
+        for (let i = 0; i < 4; i++) {
+            id = (id << 8) | unescaped[offset + i];
+        }
+        id >>>= 0;
+        offset += 4;
+
+        // 6) data
+        const dataLength = length - 4;
+        const dataBytes = unescaped.slice(offset, offset + dataLength);
+        offset += dataLength;
+
+        // Next 2 are CRC
+        const crcHigh = unescaped[offset];
+        const crcLow  = unescaped[offset + 1];
+        const crcReceived = ((crcHigh << 8) | crcLow) >>> 0;
+
+        // 7) Now compute the CRC. We do NOT include the 2 CRC bytes.
+        // We do it over [cmd, length, ID..., data...].
+        // Also apply the "if odd length of input => add 0x00" rule.
+        let crcCalc = this._computeCrcPad(
+            unescaped.slice(0, 2 + length)
+        );
+
+        if (crcCalc !== crcReceived) {
+            throw new RecoverableError(
+                `CRC mismatch. Calculated: ${crcCalc}, Received: ${crcReceived}`
+            );
+        }
+
+        // If we got here, we have a valid frame
+        const dg = new Datagram(cmd, id, Array.from(dataBytes));
+
+        // Optionally remove the consumed bytes from this.buffer.
+        // But we only unescaped "some portion" of the buffer. 
+        // The easiest approach is to do that in `_onData()` in your connection:
+        //   this.readBuffer = this.readBuffer.slice(startIndex + ???);
+
+        return dg;
     }
 
     /**
-     * Parses the buffer to extract a datagram.
-     * Uses a state machine approach to handle different parts of the datagram.
-     * @returns {Object} The parsed datagram.
-     * @throws {RecoverableError} If parsing fails at any stage.
+     * Finds the first 0x2B that is NOT escaped by 0x2D.
      */
-    parse() {
-        let length = 0;
-        let dataLength = 0;
-        let crc = new CRC();
-        let crcReceived = 0;
-        let escaped = false;
-        let state = ParserState.AwaitingStart;
-        let dg = new Datagram();
-
-        //console.log("Buffer content:", this.buffer);
-        let startIndex = this.buffer.indexOf(0x2B);
-        if (startIndex === -1) {
-            throw new RecoverableError('Missing start byte');
-        }
-        state = ParserState.AwaitingCmd;
-    
-        //console.log("Parser start index:", startIndex);
-        //console.log("Parser buffer length:", this.buffer.length);
-        //console.log("Parser buffer state:", state);
-
-        this.length = this.buffer.length;
-        let i = startIndex + 1; // Überspringen Sie das Startbyte und gehen Sie zum nächsten Byte über
-        while (i < this.length) {
-            const b = this.buffer[i] & 0xFF; // Ensure unsigned byte
-     
-            // Handling of escaped bytes
-            if (!escaped) {
-                if (b === 0x2b) {
-                    state = ParserState.AwaitingCmd;
-                    i++;
-                    continue;
-                } else if (b === 0x2d) {
-                    escaped = true;
-                    i++;
-                    continue;
+    _findStartIndex() {
+        // naive approach: find indexOf(0x2B), check if it's escaped
+        // if it's preceded by 0x2D, skip it. For repeated escapes, do more logic.
+        // For now, we do a simple loop:
+        for (let i = 0; i < this.buffer.length; i++) {
+            if (this.buffer[i] === START_BYTE) {
+                // check if this is the first byte or if the previous byte is not 0x2D
+                if (i === 0) return 0;
+                if (this.buffer[i - 1] !== 0x2D) {
+                    return i;
                 }
-            } else {
-                escaped = false; // Reset the escaped flag
             }
+        }
+        return -1;
+    }
 
-            //console.log("Parser buffer index:", i);
-            //console.log("Parser buffer byte:", b);        
-            //console.log(`(state: ${state})-${b.toString(16).padStart(2, '0')}->`);
-         
-            switch (state) {
-                case ParserState.AwaitingStart:
-                    if (b === 0x2B) {
-                        state = ParserState.AwaitingCmd;
-                    }
-                    break;
+    /**
+     * Builds an unescaped array from the raw buffer,
+     * starting at `startIndex`. We stop once we have enough to parse,
+     * or if the data ends.
+     */
+    _unescapeFrame(startIndex) {
+        // we skip leading bytes (0..startIndex-1)
+        // Then from startIndex forward, we interpret escapes.
+        const out = [];
+        // skip the start token 0x2B itself
+        // => we do not store it in out, because we only store [cmd, length, ...]
+        // But if the device wants the start in the CRC? The doc says NO, the start byte is excluded.
 
-                case ParserState.AwaitingCmd:
-                    crc.reset();
-                    crc.update(b);
-                    dg.cmd = b;
-                    //console.log("Parsed command value:", dg.cmd);
-
-                    if (Object.values(Command).includes(dg.cmd)) { 
-                        state = ParserState.AwaitingLen;
-                    } else {
-                        //console.log("Unrecognized command byte:", dg.cmd);
-                        state = ParserState.AwaitingStart;
-                    }
-                    break;              
-                                    
-                case ParserState.AwaitingLen:
-                    crc.update(b);
-                    length = b;
-                    dataLength = length - 4;
-                    state = ParserState.AwaitingId0;
-                    break;
-            
-                case ParserState.AwaitingId0:
-                    crc.update(b);
-                    dg.id |= (b << 24) >>> 0;  // Ensure unsigned shift
-                    state = ParserState.AwaitingId1;
-                    break;
-            
-                case ParserState.AwaitingId1:
-                    crc.update(b);
-                    dg.id |= (b << 16) >>> 0;  // Ensure unsigned shift
-                    state = ParserState.AwaitingId2;
-                    break;
-            
-                case ParserState.AwaitingId2:
-                    crc.update(b);
-                    dg.id |= (b << 8) >>> 0;  // Ensure unsigned shift
-                    state = ParserState.AwaitingId3;  // Ensure transition to AwaitingId3
-                    break;
-            
-                case ParserState.AwaitingId3:
-                    crc.update(b);
-                    dg.id = (dg.id | b) >>> 0;   // Ensure the result is treated as an unsigned 32-bit integer
-                    dg.data = [];  // Das entspricht make([]byte, 0, dataLength) in Go
-
-                    if (dataLength > 0) {
-                        state = ParserState.AwaitingData;
-                    } else {
-                        state = ParserState.AwaitingCrc0;
-                    }
-                    break;
-            
-                case ParserState.AwaitingData:
-                    crc.update(b);
-                    dg.data.push(b);
-                    if (dg.data.length === dataLength) {
-                        state = ParserState.AwaitingCrc0;
-                    }
-                    break;
-             
-                case ParserState.AwaitingCrc0:
-                    crcReceived = b << 8;
-                    state = ParserState.AwaitingCrc1;
-                    break;
-            
-                case ParserState.AwaitingCrc1:
-                    crcReceived |= b;
-                    //console.log("Received CRC:", crcReceived);
-                    const crcCalculated = crc.get();
-                    if (crcCalculated !== crcReceived) {
-                        throw new RecoverableError(`CRC mismatch. Calculated: ${crcCalculated}, Received: ${crcReceived}`);
-                        state = ParserState.AwaitingStart;
-                    } else {
-                        state = ParserState.Done;
-                    }
-                    break;
-            
-                case ParserState.Done:
-                    // Ignoriere zusätzliche Bytes
-                    break;
-            }  
-            
-            if (!escaped && (b === 0x2b || b === 0x2d)) {
-            //    console.log(`Parsing error detected at state: ${state}, at byte: ${b.toString(16).padStart(2, '0')}, at Buffer position: ${i}`);
-            }  
-        i++;
+        let i = startIndex + 1;
+        while (i < this.buffer.length) {
+            const b = this.buffer[i];
+            // if b == 0x2D, then the next byte is data => skip b, read next
+            if (b === 0x2D) {
+                // ensure there's a next byte
+                if (i + 1 >= this.buffer.length) {
+                    return null; // incomplete
+                }
+                out.push(this.buffer[i + 1]);
+                i += 2;
+            } else if (b === START_BYTE) {
+                // That might be a new frame => we can stop here. 
+                // Because we only parse ONE frame at a time.
+                // or we interpret it as an error if we haven't found a CRC yet.
+                // For now, let's just break, we'll parse only up to here.
+                break;
+            } else {
+                out.push(b);
+                i++;
+            }
         }
 
-        if (state !== ParserState.Done) {
-            //console.error("Failed to parse data at state:", state, "with buffer:", this.buffer.toString());
-            throw new RecoverableError(`Parsing failed in state ${state}. Buffer content: ${this.buffer.toString()}`);
-        }      
-        return dg;
+        return out;
+    }
+
+    /**
+     * Compute CRC with "pad to even length" rule if out.length is odd.
+     */
+    _computeCrcPad(bytes) {
+        const crc = new CRC();
+        // feed each byte
+        for (let b of bytes) {
+            crc.update(b);
+        }
+        if ((bytes.length % 2) === 1) {
+            crc.update(0);
+        } 
+        return crc.get();
     }
 }
 
-/**
- * Exports the DatagramParser class for use in other modules.
- */
 module.exports = DatagramParser;
