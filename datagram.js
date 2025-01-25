@@ -153,7 +153,7 @@ class Identifier {
     static BATTERY_STATUS = { id: 0x70A2AF4F, type: 'uint32', writable: false, description: "Current Battery status" };
     static BATTERY_CAPACITY_AH = { id: 0xB57B59BD, type: 'float32', writable: false, description: "Battery capacity [Ah]" };
     static BATTERY_TEMPERATURE_C = { id: 0x902AFAFB, type: 'float32', writable: false, description: "Battery temperature [°C]" };
-    static BATTERY_SOC_TARGET = { id: 0x8B9FF008, type: 'float32', writable: false, description: "Battery SoC target" };
+    static BATTERY_SOC_TARGET = { id: 0x8B9FF008, type: 'float32', writable: true, description: "Battery SoC target", validate: value => value >= 0 && value <= 1 };
     static BATTERY_SOC_TARGET_HIGH = { id: 0xB84A38AB, type: 'float32', writable: false, description: "Battery SoC target high" };
     static BATTERY_SOC_TARGET_MIN = { id: 0xCE266F0F, type: 'float32', writable: false, description: "Battery SoC target min" };
     static BATTERY_SOC_TARGET_MIN_ISLAND = { id: 0x8EBF9574, type: 'float32', writable: false, description: "Battery SoC target min island" };
