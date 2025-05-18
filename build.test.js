@@ -119,6 +119,51 @@ describe('DatagramParser Validations', () => {
     });
 });
 
+const Connection = require('./connection.js');
+
+describe('Connection Pooling', () => {
+    const host = '127.0.0.1';
+    const port = 12345;
+    const cacheDuration = 1000;
+
+    test('reuses connection for same host:port', () => {
+        const c1 = Connection.getPooledConnection(host, port, cacheDuration);
+        const c2 = Connection.getPooledConnection(host, port, cacheDuration);
+        expect(c1).toBe(c2);
+    });
+
+    test('returns new connection after close (pooled)', () => {
+        const c1 = Connection.getPooledConnection(host, port, cacheDuration);
+        c1.close();
+        const c2 = Connection.getPooledConnection(host, port, cacheDuration);
+        expect(c2).not.toBe(c1);
+    });
+
+    test('different ports do not share connection (pooled)', () => {
+        const c1 = Connection.getPooledConnection(host, 10000, cacheDuration);
+        const c2 = Connection.getPooledConnection(host, 10001, cacheDuration);
+        expect(c1).not.toBe(c2);
+    });
+
+    test('different hosts do not share connection (pooled)', () => {
+        const c1 = Connection.getPooledConnection('127.0.0.1', port, cacheDuration);
+        const c2 = Connection.getPooledConnection('127.0.0.2', port, cacheDuration);
+        expect(c1).not.toBe(c2);
+    });
+
+    test('direct new always returns a fresh instance', () => {
+        const c1 = new Connection(host, port, cacheDuration);
+        const c2 = new Connection(host, port, cacheDuration);
+        expect(c1).not.toBe(c2);
+    });
+});
+
+
+
+
+
+
+
 /*
 // Basic Parsing Tests
 describe('Basic Parsing Tests', () => {

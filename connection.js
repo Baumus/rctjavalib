@@ -10,6 +10,8 @@ const MAX_RETRIES = process.env.MAX_RETRIES || 10;
 const INITIAL_BACKOFF = process.env.INITIAL_BACKOFF || 100;
 const BACKOFF_MULTIPLIER = process.env.BACKOFF_MULTIPLIER || 2;
 
+const _connectionPool = new Map();
+
 class Connection {
     constructor(host, port, cacheDuration, cacheMaxSize = 1000) {
         this.host = host;
@@ -19,31 +21,14 @@ class Connection {
         this.cache = new Cache(cacheDuration, cacheMaxSize);
 
         this.conn = null;
-
-        // We keep one buffer for all incoming data.
         this.readBuffer = Buffer.alloc(0);
 
-        // Request queue handling
         this._requestQueue = [];
         this._processing = false;
-
-        // Connection caching logic
-        if (Connection.connectionCache.has(host)) {
-            const cachedConn = Connection.connectionCache.get(host);
-            if (cachedConn.conn && !cachedConn.conn.destroyed) {
-                return cachedConn;
-            }
-        }
-        Connection.connectionCache.set(host, this);
     }
 
     async connect() {
-        if (this.conn && !this.conn.destroyed) {
-            // Already connected
-            return;
-        }
-
-        // Create the TCP connection
+        if (this.conn && !this.conn.destroyed) return;
         this.conn = net.createConnection({ host: this.host, port: this.port });
 
         // Attach a single 'data' listener that handles *all* bytes
@@ -83,7 +68,9 @@ class Connection {
             this.conn.destroy();
             this.conn = null;
         }
-        Connection.connectionCache.delete(this.host);
+        // Remove from pool if present
+        const key = `${this.host}:${this.port}`;
+        _connectionPool.delete(key);
     }
 
     _onData(chunk) {
@@ -375,5 +362,22 @@ class Connection {
     }
 }
 
-Connection.connectionCache = new Map();
+Connection.getPooledConnection = function(host, port, cacheDuration, cacheMaxSize = 1000) {
+    const key = `${host}:${port}`;
+    let conn = _connectionPool.get(key);
+
+    if (conn && conn.conn && conn.conn.destroyed) {
+        _connectionPool.delete(key);
+        conn = null;
+    }
+    if (conn) {
+        return conn;
+    }
+
+    conn = new Connection(host, port, cacheDuration, cacheMaxSize);
+    _connectionPool.set(key, conn);
+    return conn;
+};
+
+
 module.exports = Connection;

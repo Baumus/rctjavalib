@@ -63,6 +63,28 @@ This example demonstrates how to establish a connection, query the power generat
 
 **⚠️ Important Disclaimer**: While this library includes safeguards for writing methods to prevent invalid commands, **any use of the writing functionality is entirely at your own risk**. I take no responsibility for errors, incorrect configurations, or harm caused to the inverter as a result of writing variables. Ensure you fully understand the implications of the commands you send before using them. **Use writing features with caution** — **no guarantees are provided!**
 
+### Connection Pooling (Recommended)
+
+For efficient and robust communication, rctjavalib supports transparent connection pooling.
+This allows you to **reuse the same connection** instance for each inverter (host:port), reducing overhead and ensuring consistent communication.
+
+**Use pooling as follows:**
+```javascript
+const Connection = require('rctjavalib/connection.js');
+const { Identifier } = require('rctjavalib/datagram.js');
+
+// Obtain a pooled connection (recommended)
+const conn = Connection.getPooledConnection('192.168.1.100', 8899, 5000); // Host, Port, [cacheDurationMs]
+await conn.connect();
+
+const power = await conn.query(Identifier.SOLAR_GEN_A_POWER_W);
+console.log(`Solar generator A power: ${Math.round(power)} W`);
+
+conn.close();
+```
+
+- Multiple calls to getPooledConnection with the same host and port will always return the same instance (until .close() is called).
+- For non-pooled connections, you can still use new Connection(...).
 
 ## Architecture
 
@@ -91,6 +113,7 @@ This example demonstrates how to establish a connection, query the power generat
    - Integrates datagram builders and parsers for seamless communication.
    - Implements caching to reduce redundant queries and improve performance.
    - Provides high-level methods for querying and writing to the inverter, ensuring safety and validation.
+   - Supports efficient connection pooling via getPooledConnection for robust, resource-friendly usage.
 
 6. **`cache.js`**:
    - Implements a caching mechanism to store and reuse recent datagrams.
