@@ -158,7 +158,55 @@ describe('Connection Pooling', () => {
     });
 });
 
+describe('Connection Request Queue', () => {
+    test('should process requests strictly in sequence and never in parallel', async () => {
+        // Fake Host/Port – es wird nichts verbunden, wir testen nur die Queue
+        const conn = new Connection('localhost', 12345, 1000);
 
+        let concurrentExecutions = 0;
+        let maxConcurrent = 0;
+        let callOrder = [];
+
+        // Wir hängen uns an die _enqueueRequest-Queue direkt an.
+        // Die Jobs warten jeweils 30ms, um Überschneidungen zu erkennen
+        function jobFactory(id, wait = 30) {
+            return async () => {
+                concurrentExecutions++;
+                if (concurrentExecutions > maxConcurrent) maxConcurrent = concurrentExecutions;
+                callOrder.push(`start-${id}`);
+
+                // Simuliertes "langes" Processing
+                await new Promise(res => setTimeout(res, wait));
+
+                callOrder.push(`end-${id}`);
+                concurrentExecutions--;
+                return id;
+            }
+        }
+
+        // Fünf Requests fast gleichzeitig in die Queue geben
+        const promises = [];
+        for (let i = 0; i < 5; i++) {
+            promises.push(conn._enqueueRequest(jobFactory(i)));
+        }
+
+        // Alle durchlaufen lassen
+        const results = await Promise.all(promises);
+
+        // Die Ausführung MUSS nacheinander erfolgen (maxConcurrent darf nie > 1 sein)
+        expect(maxConcurrent).toBe(1);
+
+        // Die Ergebnisse müssen der Reihenfolge nach stimmen
+        expect(results).toEqual([0, 1, 2, 3, 4]);
+        expect(callOrder).toEqual([
+            'start-0', 'end-0',
+            'start-1', 'end-1',
+            'start-2', 'end-2',
+            'start-3', 'end-3',
+            'start-4', 'end-4'
+        ]);
+    });
+});
 
 
 

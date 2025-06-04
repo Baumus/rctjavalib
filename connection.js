@@ -133,7 +133,7 @@ class Connection {
         });
     }
 
-    async _receive(timeoutMs = 2000) {
+    async _receive(timeoutMs = 4000) {
         if (this._currentResolve) {
             throw new Error('Another request is already waiting for a response');
         }
@@ -232,35 +232,44 @@ class Connection {
     }
 
     async _enqueueWriteOperation(identifier, datagram, data) {
-        // Enqueue sending the write command
         await this._enqueueRequest(async () => {
+            // 1. Write senden
             this.builder.build(datagram);
             await this.send(this.builder);
             console.log(`Write command for '${identifier.description}' sent.`);
-        });
 
-        // Enqueue sending the read command to verify the write
-        await this._enqueueRequest(async () => {
+            // 2. Wait for response
+            await new Promise(resolve => setTimeout(resolve, 300)); // Optional: Wait before Read
             const readDatagram = { cmd: Command.READ, id: identifier.id, data: null };
             this.builder.build(readDatagram);
             await this.send(this.builder);
             console.log(`Read command for '${identifier.description}' sent.`);
-        });
 
-        // Enqueue waiting for and handling the response
-        await this._enqueueRequest(async () => {
-            const dg = await this._receive();
+            let readDg;
+            try {
+                readDg = await this._receive(4000);
+            } catch (err) {
+                console.error(`Read after Write for '${identifier.description}' failed.`);
+                throw new RecoverableError(`Fallback Read failed for '${identifier.description}'`);
+            }
 
-            if (dg.cmd === Command.RESPONSE && dg.id === identifier.id && this._compareArrays(dg.data, data)) {
-                console.log(`Write verification for '${identifier.description}' was successful.`);
+            if (
+                readDg &&
+                readDg.cmd === Command.RESPONSE &&
+                readDg.id === identifier.id &&
+                this._compareArrays(readDg.data, data)
+            ) {
+                console.log(`Read verification for '${identifier.description}' was successful.`);
             } else {
                 console.error(
-                    `Write verification for '${identifier.description}' failed. Sent data: ${data}, Received data: ${dg.data}`
+                    `Write & Read verification for '${identifier.description}' failed. ` +
+                    `Sent data: ${data}, Got (Read): ${readDg ? readDg.data : "none"}`
                 );
-                throw new RecoverableError(`Write verification failed for '${identifier.description}'`);
+                throw new RecoverableError(`Write and Read verification failed for '${identifier.description}'`);
             }
         });
     }
+
 
     async query(identifier) {
         return this._enqueueRequest(async () => {
