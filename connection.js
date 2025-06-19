@@ -25,6 +25,27 @@ class Connection {
 
         this._requestQueue = [];
         this._processing = false;
+
+        this._idleTimeoutHandle = null;
+        this._idleTimeoutMs = 90000; // Default idle timeout of 90 seconds
+        this._activeRequests = 0;
+        this._pendingClose = false;
+    }
+
+    setIdleTimeout(ms = this._idleTimeoutMs) {
+        if (this._idleTimeoutHandle) {
+            clearTimeout(this._idleTimeoutHandle);
+        }
+        this._idleTimeoutMs = ms;
+
+        if (ms > 0) {
+            this._idleTimeoutHandle = setTimeout(() => {
+                console.log(`Idle timeout reached, closing connection to ${this.host}:${this.port}`);
+                this.close();
+            }, ms);
+        } else {
+            this._idleTimeoutHandle = null;
+        }
     }
 
     async connect() {
@@ -42,6 +63,7 @@ class Connection {
 
             this.conn.once('connect', () => {
                 console.log('Connected successfully');
+                this.setIdleTimeout(); // Reset idle timeout on successful connection
                 resolve();
             });
 
@@ -63,6 +85,18 @@ class Connection {
     }
 
     close() {
+        if (this._idleTimeoutHandle) {
+            clearTimeout(this._idleTimeoutHandle);
+            this._idleTimeoutHandle = null;
+        }
+        if (this._activeRequests > 0) {
+            this._pendingClose = true;
+        } else {
+            this._doClose();
+        }
+    }
+
+    _doClose() {
         if (this.conn) {
             this.conn.end();
             this.conn.destroy();
@@ -71,6 +105,7 @@ class Connection {
         // Remove from pool if present
         const key = `${this.host}:${this.port}`;
         _connectionPool.delete(key);
+        this._pendingClose = false;
     }
 
     _onData(chunk) {
@@ -239,7 +274,7 @@ class Connection {
             console.log(`Write command for '${identifier.description}' sent.`);
 
             // 2. Wait for response
-            await new Promise(resolve => setTimeout(resolve, 300)); // Optional: Wait before Read
+            await new Promise(resolve => setTimeout(resolve, 800)); // Optional: Wait before Read
             const readDatagram = { cmd: Command.READ, id: identifier.id, data: null };
             this.builder.build(readDatagram);
             await this.send(this.builder);
@@ -248,6 +283,10 @@ class Connection {
             let readDg;
             try {
                 readDg = await this._receive(4000);
+                if (!readDg || readDg.data.length === 0) {
+                    await new Promise(r => setTimeout(r, 200));
+                    readDg = await this._receive(4000);
+                }
             } catch (err) {
                 console.error(`Read after Write for '${identifier.description}' failed.`);
                 throw new RecoverableError(`Fallback Read failed for '${identifier.description}'`);
@@ -316,6 +355,7 @@ class Connection {
     }
 
     _enqueueRequest(fn) {
+        this._activeRequests++;
         return new Promise((resolve, reject) => {
             this._requestQueue.push({ fn, resolve, reject });
             this._processQueue();
@@ -333,6 +373,11 @@ class Connection {
                 job.resolve(result);
             } catch (err) {
                 job.reject(err);
+            }
+            this._activeRequests--;
+            this.setIdleTimeout(); // Reset idle timeout after processing a request
+            if (this._pendingClose && this._activeRequests === 0) {
+                this._doClose();
             }
         }
 
@@ -390,3 +435,4 @@ Connection.getPooledConnection = function(host, port, cacheDuration, cacheMaxSiz
 
 
 module.exports = Connection;
+
