@@ -34,7 +34,9 @@ describe('DatagramBuilder and DatagramParser Tests', () => {
             parser.reset();
             parser.buffer = builder.bytes();
             parser.length = builder.bytes().length;
-            const dg = parser.parse();
+            const result = parser.parse();
+            expect(result && result.datagram).toBeTruthy();
+            const dg = result.datagram;
 
             expect(dg).toBeTruthy();  // check if dg is not null or undefined
             expect(dg.cmd).toBe(tc.dg.cmd);
@@ -106,7 +108,9 @@ describe('DatagramParser Validations', () => {
         const buffer = [0x2B, 0x01, 0x04, 0x40, 0x0F, 0x01, 0x5B, 0x58, 0xB4];
         parser.buffer = new Uint8Array(buffer);
         parser.length = buffer.length;
-        const dg = parser.parse();
+        const result = parser.parse();
+        expect(result && result.datagram).toBeTruthy();
+        const dg = result.datagram;
         expect(dg.cmd).toBe(0x01);
         expect(dg.id).toBe(0x400F015B);
     });
@@ -207,6 +211,97 @@ describe('Connection Request Queue', () => {
         ]);
     });
 });
+
+describe('DatagramParser Buffer Robustness', () => {
+    test('should parse multiple datagrams from a single buffer', () => {
+        const builder = new DatagramBuilder();
+        const parser  = new DatagramParser();
+
+        // first frame
+        builder.build({ cmd: Command.READ, id: 0x400F015B, data: null });
+        const frame1 = Buffer.from(builder.bytes());        // clone here
+
+        // second frame
+        builder.build({ cmd: Command.READ, id: 0xDB2D69AE, data: null });
+        const frame2 = Buffer.from(builder.bytes());        // clone here
+
+        // combine and feed parser
+        let buffer = Buffer.concat([frame1, frame2]);
+        parser.buffer = new Uint8Array(buffer);
+        parser.length = parser.buffer.length;
+
+        const r1 = parser.parse();
+        expect(r1 && r1.datagram).toBeTruthy();
+
+        parser.buffer = parser.buffer.slice(r1.bytesConsumed);
+        parser.length = parser.buffer.length;
+
+        const r2 = parser.parse();
+        expect(r2 && r2.datagram).toBeTruthy();
+
+        expect(r1.datagram.id).toBe(0x400F015B);
+        expect(r2.datagram.id).toBe(0xDB2D69AE);
+    });
+
+
+
+    test('should wait for complete frame if buffer is partial', () => {
+        const parser = new DatagramParser();
+        // Only the start of a frame, missing the last bytes
+        const buffer = [0x2B, 0x01, 0x04, 0x40, 0x0F];
+        parser.buffer = new Uint8Array(buffer);
+        parser.length = buffer.length;
+
+        let result = parser.parse();
+        expect(result).toBe(null); // Not enough data, should return null
+    });
+
+    test('should skip and survive unsolicited frames', () => {
+        const builder = new DatagramBuilder();
+        const parser = new DatagramParser();
+
+        // Build push frame (cmd=2, id=0x11223344)
+        builder.build({ cmd: 0x02, id: 0x11223344, data: null });
+        const pushFrame = builder.bytes();
+
+        // Build a valid response frame (cmd=1, id=0x400F015B)
+        builder.build({ cmd: 0x01, id: 0x400F015B, data: null });
+        const responseFrame = builder.bytes();
+
+        const buffer = Buffer.concat([pushFrame, responseFrame]);
+        parser.buffer = buffer;
+        parser.length = buffer.length;
+
+        let result1 = parser.parse();
+        expect(result1 && result1.datagram).toBeTruthy();
+        let result2 = parser.parse();
+        expect(result2 && result2.datagram).toBeTruthy();
+
+        // Check both frames parsed, order may vary
+        expect([0x01, 0x02]).toContain(result1.datagram.cmd);
+        expect([0x01, 0x02]).toContain(result2.datagram.cmd);
+    });
+
+    test('should parse second frame after first parsed and buffer updated', () => {
+        const parser = new DatagramParser();
+        // First, only the first frame
+        const buffer1 = [0x2B, 0x01, 0x04, 0x40, 0x0F, 0x01, 0x5B, 0x58, 0xB4];
+        parser.buffer = new Uint8Array(buffer1);
+        parser.length = buffer1.length;
+
+        let result1 = parser.parse();
+        expect(result1 && result1.datagram).toBeTruthy();
+        // Simulate updating the buffer with the next frame (e.g., a later TCP chunk)
+        const buffer2 = [0x2B, 0x01, 0x04, 0xDB, 0x2D, 0x2D, 0x69, 0xAE, 0x55, 0xAB];
+        parser.buffer = new Uint8Array(buffer2);
+        parser.length = buffer2.length;
+
+        let result2 = parser.parse();
+        expect(result2 && result2.datagram).toBeTruthy();
+        expect(result2.datagram.id).toBe(0xDB2D69AE);
+    });
+});
+
 
 
 

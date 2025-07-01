@@ -111,31 +111,33 @@ class Connection {
     _onData(chunk) {
         this.readBuffer = Buffer.concat([this.readBuffer, chunk]);
 
-        while (true) {
-            let dg;
-            try {
-                this.parser.reset();
-                this.parser.buffer = this.readBuffer;
-                this.parser.length = this.readBuffer.length;
+        while (this.readBuffer.length > 0) {
+            // Set parser's buffer to the current data
+            this.parser.buffer = this.readBuffer;
+            this.parser.length = this.readBuffer.length;
 
-                dg = this.parser.parse();
+            let parsed;
+            try {
+                parsed = this.parser.parse();
             } catch (err) {
                 console.error('Parsing error:', err);
-                if (this._currentReject) {
-                    this._currentReject(err);
-                }
+                if (this._currentReject) this._currentReject(err);
                 this._currentResolve = null;
                 this._currentReject = null;
-                this.readBuffer = Buffer.alloc(0);
-                return;
+                // Remove first byte to recover from desync (optional, or could clear buffer)
+                this.readBuffer = this.readBuffer.slice(1);
+                continue;
             }
 
-            if (!dg) {
+            if (!parsed || !parsed.datagram) {
+                // Wait for more data to arrive
                 break;
             }
 
-            this.readBuffer = Buffer.alloc(0);
-            this._handleDatagram(dg);
+            // Remove consumed bytes ONLY (not the whole buffer!)
+            this.readBuffer = this.readBuffer.slice(parsed.bytesConsumed);
+
+            this._handleDatagram(parsed.datagram);
         }
     }
 

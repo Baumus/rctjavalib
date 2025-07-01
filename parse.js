@@ -23,8 +23,10 @@ class DatagramParser {
 
         // 2) Unescape everything from startIndex forward
         //    until we can parse a complete frame
-        const unescaped = this._unescapeFrame(startIndex);
-        if (!unescaped) return null; // not enough data to unescape or incomplete?
+        const unescapeResult = this._unescapeFrame(startIndex);
+        if (!unescapeResult) return null; // not enough data
+        const unescaped = unescapeResult.frame;
+        const endIndex = unescapeResult.endIndex;
 
         // unescaped is an array of bytes: [cmd, length, ID..., data..., CRC(2 bytes)]
         // 3) Check we have at least cmd(1) + length(1) + ID(4) + CRC(2) => 8 bytes
@@ -87,7 +89,10 @@ class DatagramParser {
         // The easiest approach is to do that in `_onData()` in your connection:
         //   this.readBuffer = this.readBuffer.slice(startIndex + ???);
 
-        return dg;
+        return {
+            datagram: dg,
+            bytesConsumed: (endIndex - startIndex + 1)   // <-- This should cover everything consumed
+        };
     }
 
     /**
@@ -145,7 +150,7 @@ class DatagramParser {
             }
         }
 
-        return out;
+        return { frame: out, endIndex: i - 1 };
     }
 
     /**
