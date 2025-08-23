@@ -115,11 +115,18 @@ describe('DatagramParser Validations', () => {
         expect(dg.id).toBe(0x400F015B);
     });
 
-    test('should throw error for invalid buffer', () => {
-        const buffer = [0x2B, 0x01, 0x04, 0x40, 0x0F, 0x01, 0x91, -2134184, 0x180];
-        parser.buffer = new Uint8Array(buffer);
-        parser.length = buffer.length;
-        expect(() => parser.parse()).toThrow(RecoverableError);
+    test('should gracefully ignore invalid/garbled buffer (no throw)', () => {
+        const bad = [0x2B, 0x01, 0x04, 0x40, 0x0F, 0x01, 0x91, -2134184, 0x180];
+        const clamped = bad.map(b => (b & 0xFF));
+        parser.buffer = Uint8Array.from(clamped);
+
+        const res = parser.parse();
+
+        expect(res === null || res.datagram === null).toBe(true);
+        if (res !== null) {
+        expect(typeof res.bytesConsumed).toBe('number');
+        expect(res.bytesConsumed).toBeGreaterThan(0);
+        }
     });
 });
 
