@@ -40,14 +40,21 @@ class Connection {
   }
 
   setIdleTimeout(ms = this._idleTimeoutMs) {
-    if (this._idleTimeoutHandle) clearTimeout(this._idleTimeoutHandle);
+    if (this._idleTimeoutHandle) {
+      clearTimeout(this._idleTimeoutHandle);
+      this._idleTimeoutHandle = null;
+    }
     this._idleTimeoutMs = ms;
 
     if (ms > 0) {
-      this._idleTimeoutHandle = setTimeout(() => {
-        console.log(`Idle timeout reached, closing connection to ${this.host}:${this.port}`);
+      const handle = setTimeout(() => {
+        // keine Logs hier, damit Tests nicht nach Abschluss loggen
+        this._idleTimeoutHandle = null;
         this.close();
       }, ms);
+      // Verhindert, dass der Timer den Event-Loop am Leben hält
+      if (typeof handle.unref === 'function') handle.unref();
+      this._idleTimeoutHandle = handle;
     } else {
       this._idleTimeoutHandle = null;
     }
@@ -56,11 +63,14 @@ class Connection {
   async connect() {
     if (this.conn && !this.conn.destroyed) return;
 
-    this.conn = net.createConnection({ host: this.host, port: this.port });
+  // Erzeuge Socket und behalte eine lokale Referenz, um Race-Conditions
+  // mit spaeterem this.conn = null zu vermeiden (z. B. in Timern/close()).
+  const socket = net.createConnection({ host: this.host, port: this.port });
+  this.conn = socket;
 
     // Einmalige Low-Level-Handler
-    this.conn.on('data', chunk => this._onData(chunk));
-    this.conn.on('error', err => {
+    socket.on('data', chunk => this._onData(chunk));
+    socket.on('error', err => {
       // Offene Waiter sauber ablehnen
       if (this._waiter) {
         const rej = this._waiter.reject;
@@ -68,7 +78,7 @@ class Connection {
         rej(new RecoverableError(`Socket error: ${err.message || err}`));
       }
     });
-    this.conn.on('close', () => {
+    socket.on('close', () => {
       if (this._waiter) {
         const rej = this._waiter.reject;
         this._clearWaiter();
@@ -81,20 +91,26 @@ class Connection {
       console.log('Setting up event listeners');
 
       const dialTimer = setTimeout(() => {
-        // bricht den Verbindungsaufbau hart ab
-        this.conn.destroy(new Error(`Dial timeout after ${DIAL_TIMEOUT} ms`));
+        // bricht den Verbindungsaufbau hart ab; verwende lokale Socket-Referenz
+        try {
+          if (socket && !socket.destroyed) {
+            socket.destroy(new Error(`Dial timeout after ${DIAL_TIMEOUT} ms`));
+          }
+        } catch (e) {
+          // ignore
+        }
       }, DIAL_TIMEOUT);
 
-      this.conn.once('connect', () => {
+      socket.once('connect', () => {
         clearTimeout(dialTimer);
         console.log('Connected successfully');
         // WICHTIG: KEIN socket.setTimeout(...) mehr für Inaktivität!
-        this.conn.setKeepAlive(true, KEEPALIVE_INTERVAL); // hält NAT/GW/WR-Verbindung offen
+        socket.setKeepAlive(true, KEEPALIVE_INTERVAL); // hält NAT/GW/WR-Verbindung offen
         this.setIdleTimeout();
         resolve();
       });
 
-      this.conn.once('error', (err) => {
+      socket.once('error', (err) => {
         clearTimeout(dialTimer);
         console.error('Connection error:', err);
         this.close();
