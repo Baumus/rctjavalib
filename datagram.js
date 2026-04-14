@@ -161,6 +161,7 @@ class Identifier {
 
     // Inverter values
     static INVERTER_SN = { id: 0x7924ABD9, type: 'string', writable: false, description: "Inverter serial number" };
+    static BATTERY_BMS_SN = { id: 0x16A1F844, type: 'string', writable: false, description: "Battery BMS serial number" };
 
     // Module voltages and serial numbers
     static BATTERY_MODULE_0_SERIAL = { id: 0xFBF6D834, type: 'string', writable: false, description: "Battery cell 0 serial number" };
