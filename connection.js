@@ -279,6 +279,39 @@ class Connection {
   }
 
   async write(identifier, value) {
+
+    // Pre-Check – if battery is not in normal operation mode, force the SoC strategy to INTERNAL (if needed)
+    // and only then reject the write operation.
+    const batteryStatus = await this.query(Identifier.BATTERY_STATUS);
+    if (batteryStatus !== 0) {
+      try {
+        // Query strategy as numeric value (bypass enumMapping string conversion)
+        const currentStrategy = await this.query({ ...Identifier.POWER_MNG_SOC_STRATEGY, enumMapping: null });
+        if (currentStrategy !== SOCStrategy.INTERNAL) {
+          await this._enqueueWriteOperation(
+            Identifier.POWER_MNG_SOC_STRATEGY,
+            {
+              cmd: Command.WRITE,
+              id: Identifier.POWER_MNG_SOC_STRATEGY.id,
+              data: [SOCStrategy.INTERNAL],
+            },
+            [SOCStrategy.INTERNAL]
+          );
+
+          // Avoid stale cache entries after changing strategy
+          this.cache.entries.delete(Identifier.POWER_MNG_SOC_STRATEGY.id);
+        }
+      } catch (_) {
+        // Best-effort: if switching the strategy fails, still throw BATTERY_NOT_NORMAL below.
+      }
+
+      const error = new Error(
+        `Battery is not in normal operation mode. Current status: ${BatteryStatus.decode(batteryStatus)}`
+      );
+      error.code = "BATTERY_NOT_NORMAL";
+      throw error;
+    }
+
     if (!identifier.writable) {
       throw new Error(`Identifier '${identifier.description}' is not writable.`);
     }
@@ -318,16 +351,6 @@ class Connection {
       id: identifier.id,
       data: Array.from(data),
     };
-
-    // Pre-Check – wie gehabt
-    const batteryStatus = await this.query(Identifier.BATTERY_STATUS);
-    if (batteryStatus !== 0) {
-      const error = new Error(
-        `Battery is not in normal operation mode. Current status: ${BatteryStatus.decode(batteryStatus)}`
-      );
-      error.code = "BATTERY_NOT_NORMAL";
-      throw error;
-    }
 
     return this._enqueueWriteOperation(identifier, datagram, data);
   }

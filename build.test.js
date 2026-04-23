@@ -1,6 +1,6 @@
 const DatagramBuilder = require('./build.js');
 const DatagramParser = require('./parse.js');
-const { Command, Identifier } = require('./datagram.js');
+const { Command, Identifier, SOCStrategy } = require('./datagram.js');
 const { RecoverableError } = require('./recoverable.js');
 
 const builderTestCases = [
@@ -306,6 +306,54 @@ describe('DatagramParser Buffer Robustness', () => {
         let result2 = parser.parse();
         expect(result2 && result2.datagram).toBeTruthy();
         expect(result2.datagram.id).toBe(0xDB2D69AE);
+    });
+});
+
+describe('Connection write pre-check (battery status)', () => {
+    test('switches SoC strategy to INTERNAL before throwing BATTERY_NOT_NORMAL', async () => {
+        const conn = new Connection('localhost', 12345, 1000);
+
+        // Battery not normal, and strategy currently EXTERNAL
+        conn.query = jest.fn(async (identifier) => {
+            if (identifier.id === Identifier.BATTERY_STATUS.id) return 1;
+            if (identifier.id === Identifier.POWER_MNG_SOC_STRATEGY.id) return SOCStrategy.EXTERNAL;
+            throw new Error(`Unexpected query id: ${identifier.id}`);
+        });
+
+        conn._enqueueWriteOperation = jest.fn(async () => undefined);
+
+        await expect(conn.write(Identifier.POWER_MNG_USE_GRID_POWER_ENABLE, true)).rejects.toMatchObject({
+            code: 'BATTERY_NOT_NORMAL'
+        });
+
+        expect(conn._enqueueWriteOperation).toHaveBeenCalledTimes(1);
+        expect(conn._enqueueWriteOperation).toHaveBeenCalledWith(
+            Identifier.POWER_MNG_SOC_STRATEGY,
+            expect.objectContaining({
+                cmd: Command.WRITE,
+                id: Identifier.POWER_MNG_SOC_STRATEGY.id,
+                data: [SOCStrategy.INTERNAL]
+            }),
+            [SOCStrategy.INTERNAL]
+        );
+    });
+
+    test('does not rewrite strategy if already INTERNAL, but still throws BATTERY_NOT_NORMAL', async () => {
+        const conn = new Connection('localhost', 12345, 1000);
+
+        conn.query = jest.fn(async (identifier) => {
+            if (identifier.id === Identifier.BATTERY_STATUS.id) return 2048;
+            if (identifier.id === Identifier.POWER_MNG_SOC_STRATEGY.id) return SOCStrategy.INTERNAL;
+            throw new Error(`Unexpected query id: ${identifier.id}`);
+        });
+
+        conn._enqueueWriteOperation = jest.fn(async () => undefined);
+
+        await expect(conn.write(Identifier.POWER_MNG_USE_GRID_POWER_ENABLE, true)).rejects.toMatchObject({
+            code: 'BATTERY_NOT_NORMAL'
+        });
+
+        expect(conn._enqueueWriteOperation).not.toHaveBeenCalled();
     });
 });
 
