@@ -357,6 +357,54 @@ describe('Connection write pre-check (battery status)', () => {
     });
 });
 
+describe('Battery tower 2 identifier safety', () => {
+    test('exposes tower count as read-only', () => {
+        expect(Identifier.POWER_MNG_BATTERY_TOWER_COUNT.id).toBe(0x663F1452);
+        expect(Identifier.POWER_MNG_BATTERY_TOWER_COUNT.type).toBe('uint8');
+        expect(Identifier.POWER_MNG_BATTERY_TOWER_COUNT.writable).toBe(false);
+    });
+
+    test('all battery tower 2 identifiers are read-only', () => {
+        const tower2 = [
+            Identifier.BATTERY_TOWER_2_SOC,
+            Identifier.BATTERY_TOWER_2_VOLTAGE,
+            Identifier.BATTERY_TOWER_2_CURRENT,
+            Identifier.BATTERY_TOWER_2_TEMPERATURE_C,
+            Identifier.BATTERY_TOWER_2_SOH,
+            Identifier.BATTERY_TOWER_2_CAPACITY_AH,
+            Identifier.BATTERY_TOWER_2_BMS_SN,
+        ];
+
+        for (const identifier of tower2) {
+            expect(identifier).toBeDefined();
+            expect(identifier.writable).toBe(false);
+        }
+    });
+
+    test('tower 2 values can be resolved by id', () => {
+        const resolvedSoc = Identifier.getById(0x8B4BE168);
+        const resolvedBmsSn = Identifier.getById(0xEB7BCB93);
+
+        expect(resolvedSoc).toBe(Identifier.BATTERY_TOWER_2_SOC);
+        expect(resolvedBmsSn).toBe(Identifier.BATTERY_TOWER_2_BMS_SN);
+    });
+
+    test('legacy battery naming remains compatible', () => {
+        expect(Identifier.BATTERY_SOC).toBe(Identifier.BATTERY_TOWER_1_SOC);
+        expect(Identifier.BATTERY_STATUS).toBe(Identifier.BATTERY_SYSTEM_STATUS);
+        expect(Identifier.BATTERY_CAPACITY_AH).toBe(Identifier.BATTERY_TOWER_1_CAPACITY_AH);
+        expect(Identifier.BATTERY_TEMPERATURE_C).toBe(Identifier.BATTERY_TOWER_1_TEMPERATURE_C);
+        expect(Identifier.BATTERY_SOC_TARGET).toBe(Identifier.BATTERY_SYSTEM_SOC_TARGET);
+        expect(Identifier.BATTERY_SOC_TARGET_HIGH).toBe(Identifier.BATTERY_SYSTEM_SOC_TARGET_HIGH);
+        expect(Identifier.BATTERY_SOH).toBe(Identifier.BATTERY_TOWER_1_SOH);
+        expect(Identifier.BATTERY_BMS_SN).toBe(Identifier.BATTERY_TOWER_1_BMS_SN);
+        expect(Identifier.POWER_MNG_BATTERY_TOWER_COUNT).toBe(Identifier.BATTERY_SYSTEM_TOWER_COUNT);
+        expect(Identifier.BATTERY_SYSTEM_SOC_TARGET_MIN).toBe(Identifier.POWER_MNG_SOC_MIN);
+        expect(Identifier.BATTERY_SOC_TARGET_MIN).toBe(Identifier.POWER_MNG_SOC_MIN);
+        expect(Identifier.BATTERY_SOC_TARGET_MIN_ISLAND).toBe(Identifier.BATTERY_SYSTEM_SOC_TARGET_MIN_ISLAND);
+    });
+});
+
 
 
 

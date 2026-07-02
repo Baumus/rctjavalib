@@ -8,10 +8,9 @@ This library is a Java adaptation of the original Go-based library developed by 
 
 It is provided without any warranties, entirely for use at your own risk under an LGPL 2.1 license.
 
-
 ## **Credits**
-This project is based on the work of Markus Noga. His Go-based library can be found at https://github.com/mlnoga/rct. I thank Markus Noga for his valuable contribution to the community. Likewise, thanks to Stefan Valouch for his extensive insights and documentation provided with his project available at https://github.com/svalouch/python-rctclient that have contributed to the completion of this project.
 
+This project is based on the work of Markus Noga. His Go-based library can be found at <https://github.com/mlnoga/rct>. I thank Markus Noga for his valuable contribution to the community. Likewise, thanks to Stefan Valouch for his extensive insights and documentation provided with his project available at <https://github.com/svalouch/python-rctclient> that have contributed to the completion of this project.
 
 ## Installation
 
@@ -69,6 +68,7 @@ For efficient and robust communication, rctjavalib supports transparent connecti
 This allows you to **reuse the same connection** instance for each inverter (host:port), reducing overhead and ensuring consistent communication.
 
 **Use pooling as follows:**
+
 ```javascript
 const Connection = require('rctjavalib/connection.js');
 const { Identifier } = require('rctjavalib/datagram.js');
@@ -124,7 +124,6 @@ conn.close();
    - Defines a `RecoverableError` class to handle transient errors (e.g., parsing failures, network issues, or retries).
    - Includes utility functions to determine if an error is recoverable, allowing for automatic retry mechanisms.
 
-
 ## Testing
 
 The library uses Jest for testing. To run tests, use the following command:
@@ -132,7 +131,6 @@ The library uses Jest for testing. To run tests, use the following command:
 ```bash
 npm test
 ```
-
 
 ## Contributing
 

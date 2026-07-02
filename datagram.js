@@ -117,7 +117,6 @@ class Identifier {
     static INVERTER_AC_POWER_W = { id: 0xDB2D69AE, type: 'float32', writable: false, description: "Inverter AC power [W]" };
     static REAL_POWER_W = { id: 0x4E49AEC5, type: 'float32', writable: false, description: "Real power [W]" };
     static TOTAL_GRID_POWER_W = { id: 0x91617C58, type: 'float32', writable: false, description: "Total grid power [W]" };
-    static BATTERY_SOC = { id: 0x959930BF, type: 'float32', writable: false, description: "Battery state of charge" };
     static S0_EXTERNAL_POWER_W = { id: 0xE96F1844, type: 'float32', writable: false, description: "S0 External power [W]" };
     static LOAD_HOUSEHOLD_POWER_W = { id: 0x1AC87AA0, type: 'float32', writable: false, description: "Load household power [W]" };
 
@@ -147,23 +146,51 @@ class Identifier {
     static POWER_MNG_SOC_CHARGE = { id: 0xBD3A23C3, type: 'float32', writable: true, description: "Power management SoC charge", validate: value => value >= 0 && value <= 1 };
     static POWER_MNG_GRID_POWER_LIMIT_W = { id: 0x54829753, type: 'float32', writable: false, description: "Power management grid power limit [W]" };
     static POWER_MNG_USE_GRID_POWER_ENABLE = { id: 0x36A9E9A6, type: 'uint8', writable: true, description: "Power management use grid power enable", validate: value => value === 0 || value === 1 };
+    static BATTERY_SYSTEM_TOWER_COUNT = { id: 0x663F1452, type: 'uint8', writable: false, description: "Configured number of battery towers" };
+    static BATTERY_SYSTEM_SOC_TARGET_MIN_ISLAND = { id: 0x8EBF9574, type: 'float32', writable: false, description: "Battery system SoC target min island" };
 
-    // Battery values
-    static INVERTER_STATE = { id: 0x5F33284E, type: 'enum', writable: false, description: "Inverter state", enumMapping: InverterStates.toString };
-    static BATTERY_STATUS = { id: 0x70A2AF4F, type: 'uint32', writable: false, description: "Current Battery status" };
-    static BATTERY_CAPACITY_AH = { id: 0xB57B59BD, type: 'float32', writable: false, description: "Battery capacity [Ah]" };
-    static BATTERY_TEMPERATURE_C = { id: 0x902AFAFB, type: 'float32', writable: false, description: "Battery temperature [°C]" };
-    static BATTERY_SOC_TARGET = { id: 0x8B9FF008, type: 'float32', writable: true, description: "Battery SoC target", validate: value => value >= 0 && value <= 1 };
-    static BATTERY_SOC_TARGET_HIGH = { id: 0xB84A38AB, type: 'float32', writable: false, description: "Battery SoC target high" };
-    static BATTERY_SOC_TARGET_MIN = { id: 0xCE266F0F, type: 'float32', writable: false, description: "Battery SoC target min" };
-    static BATTERY_SOC_TARGET_MIN_ISLAND = { id: 0x8EBF9574, type: 'float32', writable: false, description: "Battery SoC target min island" };
-    static BATTERY_SOH = { id: 0x381B8BF9, type: 'float32', writable: false, description: "Battery state of health" };
+    // Battery tower 1 values
+    static BATTERY_TOWER_1_SOC = { id: 0x959930BF, type: 'float32', writable: false, description: "Battery tower 1 state of charge" };
+    static BATTERY_TOWER_1_VOLTAGE = { id: 0x65EED11B, type: 'float32', writable: false, description: "Battery tower 1 voltage [V]" };
+    static BATTERY_TOWER_1_CURRENT = { id: 0x21961B58, type: 'float32', writable: false, description: "Battery tower 1 current [A]" };
+    static BATTERY_TOWER_1_TEMPERATURE_C = { id: 0x902AFAFB, type: 'float32', writable: false, description: "Battery tower 1 temperature [°C]" };
+    static BATTERY_TOWER_1_SOH = { id: 0x381B8BF9, type: 'float32', writable: false, description: "Battery tower 1 state of health" };
+    static BATTERY_TOWER_1_CAPACITY_AH = { id: 0xB57B59BD, type: 'float32', writable: false, description: "Battery tower 1 capacity [Ah]" };
+    static BATTERY_TOWER_1_BMS_SN = { id: 0x16A1F844, type: 'string', writable: false, description: "Battery tower 1 BMS serial number" };
+
+    // Battery system values (no known tower-specific counterpart for tower 2)
+    static BATTERY_SYSTEM_STATUS = { id: 0x70A2AF4F, type: 'uint32', writable: false, description: "Battery system status" };
+    static BATTERY_SYSTEM_SOC_TARGET = { id: 0x8B9FF008, type: 'float32', writable: true, description: "Battery system SoC target", validate: value => value >= 0 && value <= 1 };
+    static BATTERY_SYSTEM_SOC_TARGET_HIGH = { id: 0xB84A38AB, type: 'float32', writable: false, description: "Battery system SoC target high" };
+
+    // Battery tower 2 values (battery_placeholder[0], read-only)
+    static BATTERY_TOWER_2_SOC = { id: 0x8B4BE168, type: 'float32', writable: false, description: "Battery tower 2 state of charge" };
+    static BATTERY_TOWER_2_VOLTAGE = { id: 0xFCA1CBB5, type: 'float32', writable: false, description: "Battery tower 2 voltage [V]" };
+    static BATTERY_TOWER_2_CURRENT = { id: 0x79D7D617, type: 'float32', writable: false, description: "Battery tower 2 current [A]" };
+    static BATTERY_TOWER_2_TEMPERATURE_C = { id: 0xC66665E8, type: 'float32', writable: false, description: "Battery tower 2 temperature [°C]" };
+    static BATTERY_TOWER_2_SOH = { id: 0x1781CD31, type: 'float32', writable: false, description: "Battery tower 2 state of health" };
+    static BATTERY_TOWER_2_CAPACITY_AH = { id: 0xBD95C46C, type: 'float32', writable: false, description: "Battery tower 2 capacity [Ah]" };
+    static BATTERY_TOWER_2_BMS_SN = { id: 0xEB7BCB93, type: 'string', writable: false, description: "Battery tower 2 BMS serial number" };
 
     // Inverter values
+    static INVERTER_STATE = { id: 0x5F33284E, type: 'enum', writable: false, description: "Inverter state", enumMapping: InverterStates.toString };
     static INVERTER_SN = { id: 0x7924ABD9, type: 'string', writable: false, description: "Inverter serial number" };
-    static BATTERY_BMS_SN = { id: 0x16A1F844, type: 'string', writable: false, description: "Battery BMS serial number" };
 
-    // Module voltages and serial numbers
+    // Legacy aliases (non-breaking): prefer BATTERY_TOWER_1_*, BATTERY_TOWER_2_* and BATTERY_SYSTEM_*
+    static BATTERY_SOC = Identifier.BATTERY_TOWER_1_SOC;
+    static POWER_MNG_BATTERY_TOWER_COUNT = Identifier.BATTERY_SYSTEM_TOWER_COUNT;
+    static BATTERY_STATUS = Identifier.BATTERY_SYSTEM_STATUS;
+    static BATTERY_CAPACITY_AH = Identifier.BATTERY_TOWER_1_CAPACITY_AH;
+    static BATTERY_TEMPERATURE_C = Identifier.BATTERY_TOWER_1_TEMPERATURE_C;
+    static BATTERY_SOC_TARGET = Identifier.BATTERY_SYSTEM_SOC_TARGET;
+    static BATTERY_SOC_TARGET_HIGH = Identifier.BATTERY_SYSTEM_SOC_TARGET_HIGH;
+    static BATTERY_SYSTEM_SOC_TARGET_MIN = Identifier.POWER_MNG_SOC_MIN;
+    static BATTERY_SOC_TARGET_MIN = Identifier.POWER_MNG_SOC_MIN;
+    static BATTERY_SOC_TARGET_MIN_ISLAND = Identifier.BATTERY_SYSTEM_SOC_TARGET_MIN_ISLAND;
+    static BATTERY_SOH = Identifier.BATTERY_TOWER_1_SOH;
+    static BATTERY_BMS_SN = Identifier.BATTERY_TOWER_1_BMS_SN;
+
+    // Battery tower 1 module values
     static BATTERY_MODULE_0_SERIAL = { id: 0xFBF6D834, type: 'string', writable: false, description: "Battery cell 0 serial number" };
     static BATTERY_MODULE_1_SERIAL = { id: 0x99396810, type: 'string', writable: false, description: "Battery cell 1 serial number" };
     static BATTERY_MODULE_2_SERIAL = { id: 0x73489528, type: 'string', writable: false, description: "Battery cell 2 serial number" };
